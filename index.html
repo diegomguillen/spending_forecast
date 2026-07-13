@@ -1,0 +1,1750 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spending Forecast - Planificador Financiero y Proyección de Flujo de Caja</title>
+    <!-- Tailwind CSS para el diseño visual premium -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js para análisis y gráficos dinámicos de proyección -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons para componentes visuales -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Favicon dinámico SVG inline -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>">
+    <style>
+        /* Estilos personalizados para inmovilizar columnas en la tabla de 52 semanas */
+        .table-container {
+            max-height: calc(100vh - 290px);
+            overflow: auto;
+        }
+        
+        /* Forzar colapso correcto y bordes consistentes */
+        table {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        /* Columnas fijas del lateral izquierdo */
+        .sticky-col-1 {
+            position: sticky;
+            left: 0;
+            background-color: #f8fafc;
+            z-index: 20;
+            border-right: 1px solid #e2e8f0;
+        }
+        
+        .sticky-col-2 {
+            position: sticky;
+            left: 160px; /* Ancho de la primera columna */
+            background-color: #f8fafc;
+            z-index: 20;
+            border-right: 2px solid #cbd5e1;
+        }
+
+        /* Encabezados sticky para evitar perder la referencia al hacer scroll vertical */
+        thead th {
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            background-color: #1e293b;
+        }
+
+        thead th.sticky-col-1 {
+            z-index: 40;
+            background-color: #0f172a;
+        }
+
+        thead th.sticky-col-2 {
+            z-index: 40;
+            background-color: #0f172a;
+        }
+
+        /* Estilo personalizado de barra de desplazamiento */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Efecto de resaltado para la columna de la semana actual */
+        .current-week-col {
+            background-color: #fef08a !important; /* Amarillo muy suave */
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- CABECERA Y CONTROL PANEL -->
+    <header class="bg-slate-900 text-white px-6 py-4 shadow-md">
+        <div class="max-w-7xl mx-auto flex flex-col lg:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-emerald-500 p-2 rounded-lg text-slate-900">
+                    <i data-lucide="calendar-range" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">Spending Forecast</h1>
+                    <p class="text-xs text-slate-400">Projection and liquidity control of 52 Weeks</p>
+                </div>
+            </div>
+            
+            <!-- Acciones Principales -->
+            <div class="flex flex-wrap items-center justify-center gap-2">
+                <!-- Selector de Año -->
+                <div class="bg-slate-800 rounded-lg p-1.5 flex items-center gap-2 border border-slate-700">
+                    <span class="text-xs text-slate-300 px-1 font-medium">Año:</span>
+                    <select id="year-selector" onchange="changeYear()" class="bg-slate-950 border border-slate-700 rounded px-2 py-0.5 text-slate-200 text-sm focus:outline-none">
+                        <option value="2025">2025</option>
+                        <option value="2026" selected>2026</option>
+                        <option value="2027">2027</option>
+                        <option value="2028">2028</option>
+                        <option value="2029">2029</option>
+                    </select>
+                </div>
+
+                <!-- Balance Inicial -->
+                <div class="bg-slate-800 rounded-lg p-1.5 flex items-center gap-2 border border-slate-700">
+                    <span class="text-xs text-slate-300 px-1 font-medium">Balance Inicial:</span>
+                    <input type="number" id="initial-capital-input" value="3000" step="100" 
+                           class="w-24 bg-slate-950 border border-slate-700 rounded px-2 py-0.5 text-right text-emerald-400 font-bold focus:outline-none focus:border-emerald-500 text-sm">
+                    <span class="text-emerald-400 text-xs font-bold pr-1">€</span>
+                </div>
+
+                <!-- Traspaso Rollover Dinámico -->
+                <div id="rollover-container" class="hidden">
+                    <button onclick="applyRollover()" class="bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-md animate-bounce">
+                        <i data-lucide="arrow-right-left" class="w-3.5 h-3.5"></i> Traspasar Saldo Anterior
+                    </button>
+                </div>
+
+                <!-- Botón de compartir WhatsApp -->
+                <button onclick="openWhatsAppModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-md">
+                    <i data-lucide="share-2" class="w-3.5 h-3.5"></i> Compartir Reporte
+                </button>
+
+                <button onclick="exportData()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white px-3 py-1.5 rounded-lg border border-slate-700 text-xs font-medium flex items-center gap-1.5 transition-all">
+                    <i data-lucide="download" class="w-3.5 h-3.5"></i> Exportar
+                </button>
+                <input type="file" id="import-file" class="hidden" accept=".json" onchange="importData(event)">
+                <button onclick="document.getElementById('import-file').click()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white px-3 py-1.5 rounded-lg border border-slate-700 text-xs font-medium flex items-center gap-1.5 transition-all">
+                    <i data-lucide="upload" class="w-3.5 h-3.5"></i> Importar
+                </button>
+                <button onclick="resetDemoData()" class="bg-rose-950/50 hover:bg-rose-900 text-rose-300 px-3 py-1.5 rounded-lg border border-rose-800 text-xs font-medium flex items-center gap-1.5 transition-all">
+                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Reiniciar Demo
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- RESUMEN DE INDICADORES CLAVE (KPIs) -->
+    <section class="bg-slate-100 border-b border-slate-200 py-4 px-6">
+        <div class="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                <span class="text-xs text-slate-500 uppercase font-bold block">FONDO DE INICIO</span>
+                <span class="text-lg font-extrabold text-slate-900" id="kpi-initial">3.000,00 €</span>
+            </div>
+            <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                <span class="text-xs text-slate-500 uppercase font-bold block">TOTAL INGRESOS PROYECTADOS</span>
+                <span class="text-lg font-extrabold text-emerald-600" id="kpi-income">0,00 €</span>
+            </div>
+            <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                <span class="text-xs text-slate-500 uppercase font-bold block">TOTAL GASTOS PROYECTADOS</span>
+                <span class="text-lg font-extrabold text-rose-600" id="kpi-expense">0,00 €</span>
+            </div>
+            <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                <span class="text-xs text-slate-500 uppercase font-bold block">FONDO FINAL PROYECTADO</span>
+                <span class="text-lg font-extrabold" id="kpi-final">0,00 €</span>
+            </div>
+            <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm col-span-2 md:col-span-1" id="kpi-alert-container">
+                <span class="text-xs text-slate-500 uppercase font-bold block">ALERTAS DE LIQUIDEZ</span>
+                <div class="flex items-center gap-1.5 mt-0.5 text-xs font-semibold" id="kpi-alert-content">
+                    <span class="text-emerald-600 flex items-center gap-1"><i data-lucide="check-circle" class="w-4 h-4"></i> Flujo Estable</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- NAVEGACIÓN DE VISTAS (TABS) -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 flex flex-col gap-4">
+        <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+            <div class="flex gap-2">
+                <button onclick="switchTab('tab-grid')" id="btn-tab-grid" class="px-4 py-2 text-sm font-bold border-b-2 border-emerald-600 text-emerald-600 flex items-center gap-2">
+                    <i data-lucide="table" class="w-4 h-4"></i> Calendario Matricial
+                </button>
+                <button onclick="switchTab('tab-charts')" id="btn-tab-charts" class="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-800 border-b-2 border-transparent flex items-center gap-2">
+                    <i data-lucide="trending-up" class="w-4 h-4"></i> Análisis de Tendencia
+                </button>
+            </div>
+            <div class="text-xs text-slate-500 flex items-center gap-3">
+                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-white border border-slate-300 inline-block italic text-slate-400 text-[10px] text-center">P</span> Previsto</span>
+                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-white border border-slate-300 inline-block font-bold text-[10px] text-center">R</span> Real</span>
+                <span id="current-week-legend" class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-yellow-100 border border-yellow-300 inline-block"></span> Semana Actual</span>
+                <button id="btn-goto-current" onclick="scrollToWeek(CURRENT_WEEK_INDEX)" class="bg-slate-200 hover:bg-slate-300 px-2 py-1 rounded text-slate-700 font-medium text-[11px] transition-all">
+                    Ir a Sem. Actual
+                </button>
+            </div>
+        </div>
+
+        <!-- CONTENIDO: VISTA CALENDARIO MATRICIAL -->
+        <div id="tab-grid" class="flex-1 flex flex-col gap-4">
+            
+            <!-- Herramientas de Edición de Categorías -->
+            <div class="bg-white p-3 rounded-lg border border-slate-200 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+                <div class="flex items-center gap-2 flex-wrap text-xs font-semibold">
+                    <span class="text-slate-600 uppercase">AÑADIR NUEVA FILA:</span>
+                    <select id="new-row-type" class="bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-emerald-500">
+                        <option value="income">Ingresos</option>
+                        <option value="expense">Gastos (Pagos)</option>
+                    </select>
+                    <input type="text" id="new-row-cat" placeholder="Categoría (Ej: Hogar)" class="bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 w-36 focus:outline-none focus:border-emerald-500">
+                    <input type="text" id="new-row-subcat" placeholder="Subcategoría (Ej: Internet)" class="bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 w-44 focus:outline-none focus:border-emerald-500">
+                    <button onclick="addNewRowFromForm()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition-all shadow-sm">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i> Insertar
+                    </button>
+                </div>
+                <div class="text-[11px] text-slate-400">
+                    * Consejo: Haga clic en cualquier celda de cantidad para editar o programar recurrencias.
+                </div>
+            </div>
+
+            <!-- Tabla de Flujo Matricial -->
+            <div class="table-container border border-slate-200 rounded-xl bg-white shadow-md custom-scrollbar">
+                <table class="text-left w-full">
+                    <thead>
+                        <tr id="table-head-weeks">
+                            <th class="sticky-col-1 text-[11px] text-slate-300 p-3 w-[160px] min-w-[160px] font-bold text-center">CATEGORÍAS</th>
+                            <th class="sticky-col-2 text-[11px] text-slate-300 p-3 w-[180px] min-w-[180px] font-bold text-center">SUBCATEGORÍAS</th>
+                            <!-- Las 52 cabeceras de semanas se inyectan dinámicamente -->
+                        </tr>
+                    </thead>
+                    <tbody id="table-body-content" class="text-xs">
+                        <!-- Las filas se renderizan dinámicamente -->
+                    </tbody>
+                    <tfoot>
+                        <!-- Totales semanales e indicadores de balance acumulado -->
+                        <tr id="total-income-row" class="bg-emerald-50/50 font-bold border-t border-slate-200 text-emerald-800">
+                            <td class="sticky-col-1 p-2 text-left shadow-sm">Ingresos Totales (€)</td>
+                            <td class="sticky-col-2 p-2 border-r-2 border-slate-300">Suma Semanal</td>
+                            <!-- Valores calculados dinámicamente -->
+                        </tr>
+                        <tr id="total-expense-row" class="bg-rose-50/50 font-bold border-t border-slate-100 text-rose-800">
+                            <td class="sticky-col-1 p-2 text-left shadow-sm">Gastos Totales (€)</td>
+                            <td class="sticky-col-2 p-2 border-r-2 border-slate-300">Suma Semanal</td>
+                            <!-- Valores calculados dinámicamente -->
+                        </tr>
+                        <tr id="net-flow-row" class="bg-slate-50 font-bold border-t border-slate-200 text-slate-700">
+                            <td class="sticky-col-1 p-2 text-left shadow-sm">Flujo Neto Semanal (€)</td>
+                            <td class="sticky-col-2 p-2 border-r-2 border-slate-300">Ingresos - Gastos</td>
+                            <!-- Valores calculados dinámicamente -->
+                        </tr>
+                        <tr id="accumulated-row" class="bg-slate-100 font-black border-t-2 border-slate-300 text-slate-900 text-sm">
+                            <td class="sticky-col-1 p-3 text-left shadow-md">Saldo Acumulado (€)</td>
+                            <td class="sticky-col-2 p-3 border-r-2 border-slate-300">Proyección Futuro</td>
+                            <!-- Valores calculados dinámicamente -->
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- CONTENIDO: VISTA GRÁFICOS Y ANÁLISIS -->
+        <div id="tab-charts" class="hidden flex-1 flex flex-col gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Gráfico de tendencia de fondos acumulados -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-md lg:col-span-2 flex flex-col h-[400px]">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                            <i data-lucide="line-chart" class="text-emerald-500 w-4 h-4"></i> Proyección de Liquidez Acumulada (Línea de Reserva)
+                        </h3>
+                        <span class="text-xs text-slate-500 font-medium">Umbral Crítico: 0,00 €</span>
+                    </div>
+                    <div class="relative flex-1">
+                        <canvas id="balanceChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Gráfico de distribución de gastos -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-md flex flex-col h-[400px]">
+                    <h3 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-1.5">
+                        <i data-lucide="pie-chart" class="text-rose-500 w-4 h-4"></i> Distribución de Gastos Reales
+                    </h3>
+                    <div class="relative flex-1 flex items-center justify-center">
+                        <canvas id="expensePieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráfico complementario de ingresos vs gastos semanales -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-md h-[300px] flex flex-col">
+                <h3 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-1.5">
+                    <i data-lucide="bar-chart" class="text-blue-500 w-4 h-4"></i> Flujo Semanal Comparativo: Ingresos vs Gastos
+                </h3>
+                <div class="relative flex-1">
+                    <canvas id="weeklyBarChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- PIE DE PÁGINA -->
+    <footer class="bg-slate-900 text-slate-500 py-4 px-6 text-center text-xs border-t border-slate-800">
+        <p>Entorno de análisis e ingeniería financiera. Los cálculos asumen balance acumulativo lineal: $B_w = B_{w-1} + I_w - G_w$. Proyección basada en datos deterministas.</p>
+    </footer>
+
+    <!-- MODAL DE EDICIÓN DE CELDA -->
+    <div id="cell-modal" class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center hidden" role="dialog" aria-modal="true">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full mx-4 overflow-hidden transform scale-95 transition-all">
+            <!-- Encabezado Modal -->
+            <div class="bg-slate-900 text-white p-4 flex justify-between items-center">
+                <div>
+                    <h3 class="font-bold text-sm tracking-wide uppercase" id="modal-title-type">Planificación de Registro</h3>
+                    <p class="text-xs text-slate-400" id="modal-subheading">Edición de Celda</p>
+                </div>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-all">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Contenido Modal -->
+            <div class="p-6 flex flex-col gap-4">
+                <!-- Información de Referencia -->
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 flex flex-col gap-1 text-xs">
+                    <div class="flex justify-between"><span class="text-slate-500 font-medium">Categoría:</span> <span class="font-bold text-slate-800" id="modal-info-cat">-</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500 font-medium">Subcategoría:</span> <span class="font-bold text-slate-800" id="modal-info-subcat">-</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500 font-medium">Intervalo Temporal:</span> <span class="font-bold text-slate-800" id="modal-info-week">-</span></div>
+                </div>
+
+                <!-- Formularios Numéricos -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-slate-500 font-bold mb-1 uppercase tracking-wide">Cantidad Prevista (€)</label>
+                        <div class="relative">
+                            <input type="number" id="input-planned" step="0.01" value="0" oninput="calculateModalDiff()"
+                                   class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-right font-bold focus:outline-none focus:border-emerald-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-500 font-bold mb-1 uppercase tracking-wide">Cantidad Real (€)</label>
+                        <div class="relative">
+                            <input type="number" id="input-real" step="0.01" value="0" oninput="calculateModalDiff()"
+                                   class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-right font-bold focus:outline-none focus:border-emerald-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comparador Desviación -->
+                <div class="p-3 rounded-lg border flex items-center justify-between text-xs" id="modal-diff-box">
+                    <span class="text-slate-600 font-medium">Desviación (Real - Previsto):</span>
+                    <span class="font-extrabold text-sm" id="modal-diff-val">0,00 € (0%)</span>
+                </div>
+
+                <!-- Campo de Notas -->
+                <div>
+                    <label class="block text-xs text-slate-500 font-bold mb-1 uppercase tracking-wide">Notas / Observaciones</label>
+                    <textarea id="input-notes" rows="2" placeholder="Detalles de la transacción, factura, retrasos..."
+                              class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-emerald-500"></textarea>
+                </div>
+
+                <!-- Opciones de Recurrencia Automática -->
+                <div class="border-t border-slate-100 pt-3 flex flex-col gap-2">
+                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" id="checkbox-recurrence" class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500 focus:ring-2">
+                        <span class="text-xs text-slate-700 font-semibold">Replicar en todas las semanas futuras del año</span>
+                    </label>
+                    <p class="text-[10px] text-slate-400 leading-normal pl-6">
+                        Si se activa, el valor "Previsto" indicado se duplicará automáticamente en todas las semanas restantes (desde el índice actual hasta la semana 52).
+                    </p>
+                </div>
+            </div>
+
+            <!-- Botones de Acción -->
+            <div class="bg-slate-50 border-t border-slate-200 px-6 py-4 flex justify-between gap-3">
+                <button onclick="deleteCellData()" class="bg-rose-50 hover:bg-rose-100 text-rose-600 px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border border-rose-200">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Vaciar Celda
+                </button>
+                <div class="flex gap-2">
+                    <button onclick="closeModal()" class="bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold transition-all">
+                        Cancelar
+                    </button>
+                    <button onclick="saveCellChanges()" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all">
+                        Guardar Cambios
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE COMPARTIR REPORTES (WHATSAPP & PORTAPAPELES) -->
+    <div id="whatsapp-modal" class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center hidden" role="dialog" aria-modal="true">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full mx-4 overflow-hidden transform scale-95 transition-all">
+            <!-- Encabezado -->
+            <div class="bg-slate-900 text-white p-4 flex justify-between items-center">
+                <div>
+                    <h3 class="font-bold text-sm tracking-wide uppercase">Compartir Reporte Financiero</h3>
+                    <p class="text-xs text-slate-400">Resumen claro y visual directo a WhatsApp o Portapapeles</p>
+                </div>
+                <button onclick="closeWhatsAppModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-all">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Contenido -->
+            <div class="p-6 flex flex-col gap-4">
+                <!-- Entrada Número Telefónico -->
+                <div>
+                    <label class="block text-xs text-slate-500 font-bold mb-1 uppercase tracking-wide">Número de teléfono del destinatario</label>
+                    <div class="flex gap-2">
+                        <span class="bg-slate-100 border border-slate-300 text-slate-500 px-3 py-2 rounded-lg font-mono text-sm flex items-center">+</span>
+                        <input type="text" id="input-phone" placeholder="34600112233" oninput="saveLastPhone()"
+                               class="flex-1 bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 font-mono text-sm focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1">
+                        Introduzca el código de país y el número sin espacios (Ej: 34 para España, 54 para Argentina, etc.).
+                    </p>
+                </div>
+
+                <!-- Rango de Selección Temporal -->
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="border border-slate-200 hover:border-emerald-500 rounded-xl p-3 flex items-center gap-3 cursor-pointer select-none transition-all">
+                        <input type="radio" name="report-range" value="week" checked onchange="updateWhatsAppPreview()" class="w-4 h-4 text-emerald-600 focus:ring-emerald-500">
+                        <div>
+                            <span class="block text-xs font-bold text-slate-800">Semana Actual</span>
+                            <span class="text-[10px] text-slate-400" id="whatsapp-range-week-label">Semana 29</span>
+                        </div>
+                    </label>
+                    <label class="border border-slate-200 hover:border-emerald-500 rounded-xl p-3 flex items-center gap-3 cursor-pointer select-none transition-all">
+                        <input type="radio" name="report-range" value="month" onchange="updateWhatsAppPreview()" class="w-4 h-4 text-emerald-600 focus:ring-emerald-500">
+                        <div>
+                            <span class="block text-xs font-bold text-slate-800">Mes Actual</span>
+                            <span class="text-[10px] text-slate-400" id="whatsapp-range-month-label">Julio 2026</span>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Previsualización del Texto -->
+                <div>
+                    <label class="block text-xs text-slate-500 font-bold mb-1 uppercase tracking-wide">Previsualización del mensaje</label>
+                    <pre id="whatsapp-preview-text" class="bg-slate-950 text-emerald-400 p-4 rounded-lg font-mono text-[11px] whitespace-pre-wrap select-all max-h-[180px] overflow-y-auto">
+📊 *ESTADO SEMANAL DE GASTOS* 📊
+📅 *Semana 29* (2026)
+🗓️ _Rango: 16 jul - 22 jul_
+
+🟢 *Ingresos Mensuales:* 2200 €
+🔴 *Gastos Semanales:* 950 €
+⚖️ *Flujo Neto del Mes:* 1250 €
+
+📝 *Detalle de Movimientos en S29:*
+🟢 *Nómina Principal:* 2200€ (Previsto)
+   _Nota: Nómina fija mensual_
+⚪ *Arrendamiento Mensual:* 850€ (Previsto)
+   _Nota: Pago arrendamiento_
+⚪ *Supermercado Semanal:* 100€ (Previsto)
+📱 _Enviado automáticamente desde el Spending Forecast_
+                    </pre>
+                </div>
+            </div>
+
+            <!-- Acciones -->
+            <div class="bg-slate-50 border-t border-slate-200 px-6 py-4 flex justify-between gap-3">
+                <button onclick="closeWhatsAppModal()" class="bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold transition-all">
+                    Cancelar
+                </button>
+                <div class="flex gap-2">
+                    <button onclick="copyReportToClipboard()" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5">
+                        <i data-lucide="copy" class="w-4 h-4"></i> Copiar al Portapapeles
+                    </button>
+                    <button onclick="sendWhatsAppReport()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5">
+                        <i data-lucide="message-square" class="w-4 h-4"></i> Compartir por WhatsApp
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- LOGICA DE CONTROLADORES JAVASCRIPT -->
+    <script>
+        // ESTADO GLOBAL DE LA APLICACIÓN
+        let appState = {
+            metadata: {
+                version: "1.0.0",
+                year: 2026,
+                updated_at: ""
+            },
+            config: {
+                initialCapital: 3000
+            },
+            categories: []
+        };
+
+        // Semana actual y mes en curso detectados dinámicamente mediante el sistema de tiempo real
+        let CURRENT_WEEK_INDEX = 29; 
+        let CURRENT_MONTH_INDEX = 6; // Julio (0-indexed base)
+
+        // Variable global para almacenar el contexto de edición del Modal de celdas
+        let activeEditContext = null;
+
+        // Variables de gráficos de Chart.js
+        let balanceChartInstance = null;
+        let weeklyBarChartInstance = null;
+        let expensePieChartInstance = null;
+
+        // Inicialización General
+        window.addEventListener('DOMContentLoaded', () => {
+            initApp();
+        });
+
+        function initApp() {
+            // Detectar año, mes y semana en tiempo real
+            detectRealTimeParameters();
+
+            // Intenta restaurar datos desde LocalStorage o genera datos demo por defecto
+            const yearSelector = document.getElementById('year-selector');
+            const targetYear = yearSelector.value;
+            
+            const savedData = localStorage.getItem(`cashflow_app_state_${targetYear}`);
+            if (savedData) {
+                try {
+                    appState = JSON.parse(savedData);
+                } catch (e) {
+                    generateSampleDataset();
+                }
+            } else {
+                generateSampleDataset();
+            }
+
+            // Sincronizar UI del selector e input de capital
+            yearSelector.value = appState.metadata.year || 2026;
+            const capInput = document.getElementById('initial-capital-input');
+            capInput.value = appState.config.initialCapital;
+            
+            capInput.addEventListener('input', (e) => {
+                let val = parseFloat(e.target.value) || 0;
+                appState.config.initialCapital = val;
+                saveToLocalStorage();
+                recalculateAll();
+            });
+
+            // Recuperar último teléfono guardado para WhatsApp
+            const savedPhone = localStorage.getItem('cashflow_last_phone');
+            if (savedPhone) {
+                document.getElementById('input-phone').value = savedPhone;
+            }
+
+            // Verificar si hay año anterior para mostrar el botón de rollover
+            checkPreviousYearRollover();
+
+            // Inicializa los iconos de Lucide
+            lucide.createIcons();
+
+            // Ejecuta el flujo de cálculo inicial y renderizado matricial
+            recalculateAll();
+        }
+
+        // Calcula dinámicamente la semana del año actual basándose en la fecha real del sistema
+        function detectRealTimeParameters() {
+            const today = new Date();
+            const currentRealYear = today.getFullYear();
+            
+            // Determinar semana del año (1-52)
+            const startOfYear = new Date(currentRealYear, 0, 1);
+            const pastDaysOfYear = (today - startOfYear) / 86400000;
+            const calculatedWeek = Math.ceil((pastDaysOfYear + startOfYear.getDay() + 1) / 7);
+            
+            CURRENT_WEEK_INDEX = Math.min(Math.max(calculatedWeek, 1), 52);
+            CURRENT_MONTH_INDEX = today.getMonth(); // 0 = Ene, 11 = Dic
+        }
+
+        function changeYear() {
+            const yearSelector = document.getElementById('year-selector');
+            const targetYear = yearSelector.value;
+
+            // Guardar estado actual antes de cambiar
+            saveToLocalStorage();
+
+            // Cargar datos del nuevo año
+            const savedData = localStorage.getItem(`cashflow_app_state_${targetYear}`);
+            if (savedData) {
+                try {
+                    appState = JSON.parse(savedData);
+                } catch (e) {
+                    generateNewEmptyYear(parseInt(targetYear));
+                }
+            } else {
+                generateNewEmptyYear(parseInt(targetYear));
+            }
+
+            // Actualizar controles e inputs
+            document.getElementById('initial-capital-input').value = appState.config.initialCapital;
+            
+            // Evaluar visibilidad del realce de semana actual (solo si coincide con el año real del sistema)
+            const today = new Date();
+            const currentRealYear = today.getFullYear();
+            const legend = document.getElementById('current-week-legend');
+            const gotoBtn = document.getElementById('btn-goto-current');
+
+            if (parseInt(targetYear) === currentRealYear) {
+                legend.classList.remove('opacity-40');
+                gotoBtn.disabled = false;
+                gotoBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                legend.classList.add('opacity-40');
+                gotoBtn.disabled = true;
+                gotoBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+
+            checkPreviousYearRollover();
+            recalculateAll();
+            showToast(`Cargada planificación de ${targetYear}`, "info");
+        }
+
+        function checkPreviousYearRollover() {
+            const currentYear = parseInt(document.getElementById('year-selector').value);
+            const prevYear = currentYear - 1;
+            const rolloverContainer = document.getElementById('rollover-container');
+
+            const prevYearData = localStorage.getItem(`cashflow_app_state_${prevYear}`);
+            if (prevYearData) {
+                rolloverContainer.classList.remove('hidden');
+            } else {
+                rolloverContainer.classList.add('hidden');
+            }
+        }
+
+        // Importar saldo final acumulado del año anterior como balance de inicio del año en curso
+        function applyRollover() {
+            const currentYear = parseInt(document.getElementById('year-selector').value);
+            const prevYear = currentYear - 1;
+            const prevYearData = localStorage.getItem(`cashflow_app_state_${prevYear}`);
+
+            if (!prevYearData) return;
+
+            try {
+                const parsedPrev = JSON.parse(prevYearData);
+                // Calcular balance acumulado final (Semana 52)
+                const tempState = appState; // Copia de seguridad temporal
+                appState = parsedPrev;
+                const projections = calculateCashFlowProjection();
+                const finalPrevBalance = projections[51].balance;
+
+                // Restaurar y asignar rollover
+                appState = tempState;
+                appState.config.initialCapital = Math.round(finalPrevBalance * 100) / 100;
+                document.getElementById('initial-capital-input').value = appState.config.initialCapital;
+
+                saveToLocalStorage();
+                recalculateAll();
+                showToast(`Capital de inicio importado de S52 de ${prevYear}: ${appState.config.initialCapital.toFixed(2)} €`, "success");
+            } catch (err) {
+                showToast("Error al calcular el traspaso de saldos", "danger");
+            }
+        }
+
+        function generateNewEmptyYear(year) {
+            appState = {
+                metadata: {
+                    version: "1.0.0",
+                    year: year,
+                    updated_at: new Date().toISOString()
+                },
+                config: {
+                    initialCapital: 0
+                },
+                categories: [
+                    {
+                        id: "cat_inc_01",
+                        name: "Ingresos Recurrentes",
+                        type: "income",
+                        subcategories: [
+                            { id: "sub_inc_sal_" + year, name: "Nómina Principal", weeks: {} }
+                        ]
+                    },
+                    {
+                        id: "cat_exp_01",
+                        name: "Gastos Inmueble & Energía",
+                        type: "expense",
+                        subcategories: [
+                            { id: "sub_exp_alq_" + year, name: "Arrendamiento Mensual", weeks: {} },
+                            { id: "sub_exp_luz_" + year, name: "Suministro Luz & Agua", weeks: {} }
+                        ]
+                    },
+                    {
+                        id: "cat_exp_02",
+                        name: "Vida Diaria",
+                        type: "expense",
+                        subcategories: [
+                            { id: "sub_exp_ali_" + year, name: "Supermercado Semanal", weeks: {} }
+                        ]
+                    }
+                ]
+            };
+            saveToLocalStorage();
+        }
+
+        // Generación de un conjunto de datos ficticios enriquecidos para demostración inmediata
+        function generateSampleDataset() {
+            const yearSelector = document.getElementById('year-selector');
+            const targetYear = parseInt(yearSelector.value) || 2026;
+
+            appState = {
+                metadata: {
+                    version: "1.0.0",
+                    year: targetYear,
+                    updated_at: new Date().toISOString()
+                },
+                config: {
+                    initialCapital: 3000
+                },
+                categories: [
+                    {
+                        id: "cat_inc_01",
+                        name: "Ingresos Recurrentes",
+                        type: "income",
+                        subcategories: [
+                            { id: "sub_inc_sal", name: "Nómina Principal", weeks: {} },
+                            { id: "sub_inc_free", name: "Servicios Profesionales", weeks: {} }
+                        ]
+                    },
+                    {
+                        id: "cat_exp_01",
+                        name: "Gastos Inmueble & Energía",
+                        type: "expense",
+                        subcategories: [
+                            { id: "sub_exp_alq", name: "Arrendamiento Mensual", weeks: {} },
+                            { id: "sub_exp_luz", name: "Suministro Luz & Agua", weeks: {} }
+                        ]
+                    },
+                    {
+                        id: "cat_exp_02",
+                        name: "Vida Diaria",
+                        type: "expense",
+                        subcategories: [
+                            { id: "sub_exp_ali", name: "Supermercado Semanal", weeks: {} },
+                            { id: "sub_exp_sus", name: "Suscripciones & Ocio", weeks: {} },
+                            { id: "sub_exp_vac", name: "Reserva Vacaciones", weeks: {} }
+                        ]
+                    }
+                ]
+            };
+
+            // Inyección automática de transacciones periódicas para la simulación
+            appState.categories.forEach(cat => {
+                cat.subcategories.forEach(sub => {
+                    if (sub.id === "sub_inc_sal") {
+                        for (let w = 1; w <= 52; w += 4) {
+                            sub.weeks[w] = { planned: 2200, real: (w < CURRENT_WEEK_INDEX ? 2200 : 0), notes: "Nómina fija mensual" };
+                        }
+                    } else if (sub.id === "sub_inc_free") {
+                        sub.weeks[10] = { planned: 450, real: 450, notes: "Consultoría adicional" };
+                        sub.weeks[24] = { planned: 750, real: 750, notes: "Proyecto finalizado" };
+                        sub.weeks[38] = { planned: 500, real: 0, notes: "Próximo encargo contratado" };
+                    } else if (sub.id === "sub_exp_alq") {
+                        for (let w = 1; w <= 52; w += 4) {
+                            sub.weeks[w] = { planned: 850, real: (w < CURRENT_WEEK_INDEX ? 850 : 0), notes: "Pago arrendamiento" };
+                        }
+                    } else if (sub.id === "sub_exp_luz") {
+                        for (let w = 3; w <= 52; w += 8) {
+                            let isHighExpense = (w === 11);
+                            sub.weeks[w] = { 
+                                planned: 110, 
+                                real: (w < CURRENT_WEEK_INDEX ? (isHighExpense ? 165 : 105) : 0), 
+                                notes: isHighExpense ? "Consumo de gas calefacción muy elevado" : "" 
+                            };
+                        }
+                    } else if (sub.id === "sub_exp_ali") {
+                        for (let w = 1; w <= 52; w++) {
+                            let plannedCost = 100;
+                            let realCost = 0;
+                            let notes = "";
+                            if (w < CURRENT_WEEK_INDEX) {
+                                realCost = plannedCost + (w % 4 === 0 ? 25 : -10);
+                                if (realCost > plannedCost) notes = "Cena fin de semana";
+                            }
+                            sub.weeks[w] = { planned: plannedCost, real: realCost, notes: notes };
+                        }
+                    } else if (sub.id === "sub_exp_sus") {
+                        for (let w = 2; w <= 52; w += 4) {
+                            sub.weeks[w] = { planned: 45, real: (w < CURRENT_WEEK_INDEX ? 45 : 0), notes: "Netflix, Spotify, Cloud Storage" };
+                        }
+                    } else if (sub.id === "sub_exp_vac") {
+                        sub.weeks[31] = { planned: 1200, real: 0, notes: "Reserva de vuelos y alojamiento" };
+                    }
+                });
+            });
+        }
+
+        // Restablecimiento de demo desde UI
+        function resetDemoData() {
+            generateSampleDataset();
+            document.getElementById('initial-capital-input').value = appState.config.initialCapital;
+            saveToLocalStorage();
+            recalculateAll();
+            showToast("Base de datos de prueba cargada", "info");
+        }
+
+        // Persistencia interna basada en la segmentación del año
+        function saveToLocalStorage() {
+            const currentYear = appState.metadata.year || 2026;
+            localStorage.setItem(`cashflow_app_state_${currentYear}`, JSON.stringify(appState));
+        }
+
+        // Cómputo global y reconstrucción visual
+        function recalculateAll() {
+            const weeklyProjections = calculateCashFlowProjection();
+            renderTableStructure(weeklyProjections);
+            updateKPIs(weeklyProjections);
+            updateCharts(weeklyProjections);
+        }
+
+        // Algoritmo Core de Proyección Financiera
+        function calculateCashFlowProjection() {
+            const totalWeeks = 52;
+            const projection = [];
+            let accumulatedBalance = parseFloat(appState.config.initialCapital) || 0;
+
+            for (let w = 1; w <= totalWeeks; w++) {
+                let weeklyIncome = 0;
+                let weeklyExpense = 0;
+
+                appState.categories.forEach(category => {
+                    category.subcategories.forEach(subcat => {
+                        const weekData = subcat.weeks[w];
+                        if (weekData) {
+                            const val = (weekData.real !== undefined && weekData.real !== null && weekData.real !== 0)
+                                ? weekData.real
+                                : (weekData.planned || 0);
+
+                            if (category.type === 'income') {
+                                weeklyIncome += val;
+                            } else if (category.type === 'expense') {
+                                weeklyExpense += val;
+                            }
+                        }
+                    });
+                });
+
+                accumulatedBalance += (weeklyIncome - weeklyExpense);
+
+                projection.push({
+                    week: w,
+                    income: weeklyIncome,
+                    expense: weeklyExpense,
+                    balance: accumulatedBalance,
+                    isInsolvent: accumulatedBalance < 0
+                });
+            }
+
+            return projection;
+        }
+
+        // Renderizado del contenido matricial de la tabla
+        function renderTableStructure(weeklyProjections) {
+            const year = appState.metadata.year || 2026;
+            const headWeeksRow = document.getElementById('table-head-weeks');
+            
+            while (headWeeksRow.children.length > 2) {
+                headWeeksRow.removeChild(headWeeksRow.lastChild);
+            }
+
+            // Detectar año real del sistema para aplicar el resaltado "Hoy"
+            const today = new Date();
+            const currentRealYear = today.getFullYear();
+            const isSelectedYearCurrentReal = (year === currentRealYear);
+
+            for (let w = 1; w <= 52; w++) {
+                const th = document.createElement('th');
+                th.className = `p-3 text-center border-b border-slate-700 min-w-[70px] max-w-[70px] text-xs font-bold tracking-tight text-white transition-all select-none`;
+                
+                const dateRange = getWeekDateRange(w, year);
+                th.title = `Semana ${w}: ${dateRange}`;
+
+                if (w === CURRENT_WEEK_INDEX && isSelectedYearCurrentReal) {
+                    th.classList.add('bg-yellow-600', 'text-slate-900');
+                    th.innerHTML = `S${w}<span class="block text-[8px] uppercase tracking-tighter opacity-90">Hoy</span>`;
+                } else {
+                    th.innerHTML = `S${w}<span class="block text-[8px] uppercase tracking-tighter text-slate-400">Sem</span>`;
+                }
+                headWeeksRow.appendChild(th);
+            }
+
+            const body = document.getElementById('table-body-content');
+            body.innerHTML = '';
+
+            appState.categories.forEach(category => {
+                const catRow = document.createElement('tr');
+                catRow.className = "bg-slate-200/60 font-semibold text-slate-700 border-b border-slate-300";
+                
+                const catTd = document.createElement('td');
+                catTd.className = "sticky-col-1 p-2 font-bold text-left shadow-sm bg-slate-200 relative group flex items-center justify-between";
+                
+                // Si la categoría NO es "INGRESOS RECURRENTES", permitir edición de texto inline
+                if (category.name.toUpperCase() !== "INGRESOS RECURRENTES") {
+                    catTd.innerHTML = `
+                        <span id="cat-text-${category.id}">${category.name.toUpperCase()}</span>
+                        <button onclick="enableCategoryEdit('${category.id}')" class="text-slate-400 hover:text-slate-700 hidden group-hover:inline-block ml-1" title="Renombrar categoría">
+                            <i data-lucide="pencil" class="w-3 h-3"></i>
+                        </button>
+                    `;
+                } else {
+                    catTd.innerHTML = `<span>${category.name.toUpperCase()}</span>`;
+                }
+                
+                const typeLabel = category.type === 'income' ? 'Ingreso' : 'Gasto';
+                const typeColor = category.type === 'income' ? 'text-emerald-700' : 'text-rose-700';
+                
+                const subcatPlaceholderTd = document.createElement('td');
+                subcatPlaceholderTd.className = `sticky-col-2 p-2 border-r-2 border-slate-300 font-bold bg-slate-200 text-[10px] uppercase ${typeColor}`;
+                subcatPlaceholderTd.textContent = typeLabel;
+
+                catRow.appendChild(catTd);
+                catRow.appendChild(subcatPlaceholderTd);
+
+                for (let w = 1; w <= 52; w++) {
+                    const emptyTd = document.createElement('td');
+                    emptyTd.className = `p-2 border-r border-slate-200 bg-slate-50/20 ${(w === CURRENT_WEEK_INDEX && isSelectedYearCurrentReal) ? 'current-week-col' : ''}`;
+                    catRow.appendChild(emptyTd);
+                }
+                body.appendChild(catRow);
+
+                category.subcategories.forEach(subcat => {
+                    const row = document.createElement('tr');
+                    row.className = "hover:bg-slate-50 border-b border-slate-100 transition-all";
+
+                    const tdCat = document.createElement('td');
+                    tdCat.className = "sticky-col-1 p-2 bg-white text-slate-400 pl-4 border-r border-slate-100 italic shadow-sm";
+                    tdCat.textContent = category.name;
+                    row.appendChild(tdCat);
+
+                    const tdSubcat = document.createElement('td');
+                    tdSubcat.className = "sticky-col-2 p-2 bg-white font-bold text-slate-800 border-r-2 border-slate-300 flex items-center justify-between shadow-sm group";
+                    tdSubcat.innerHTML = `
+                        <span>${subcat.name}</span>
+                        <button onclick="deleteSubcategory('${category.id}', '${subcat.id}')" class="text-rose-400 hover:text-rose-600 hidden group-hover:inline-block transition-all ml-1.5" title="Eliminar subcategoría">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    `;
+                    row.appendChild(tdSubcat);
+
+                    for (let w = 1; w <= 52; w++) {
+                        const cell = document.createElement('td');
+                        cell.className = `p-2 text-right border-r border-slate-100 cursor-pointer transition-all relative select-none hover:bg-slate-100 font-mono text-[11px] min-w-[70px] max-w-[70px] ${(w === CURRENT_WEEK_INDEX && isSelectedYearCurrentReal) ? 'current-week-col' : ''}`;
+                        cell.onclick = () => openCellModal(category.id, subcat.id, w);
+
+                        const weekData = subcat.weeks[w];
+                        if (weekData) {
+                            const planned = weekData.planned || 0;
+                            const real = weekData.real || 0;
+
+                            if (real !== 0) {
+                                cell.innerHTML = `<span class="font-bold text-slate-800">${real.toFixed(0)}</span> <span class="text-[9px] text-slate-400 font-sans font-normal block">R</span>`;
+                                if (category.type === 'expense' && real > planned) {
+                                    cell.classList.add('text-rose-600', 'bg-rose-50/60');
+                                }
+                            } else if (planned !== 0) {
+                                cell.innerHTML = `<span class="text-slate-400 italic font-medium">${planned.toFixed(0)}</span> <span class="text-[8px] text-slate-400 font-sans font-normal block">P</span>`;
+                            } else {
+                                cell.textContent = '-';
+                            }
+
+                            if (weekData.notes && weekData.notes.trim() !== '') {
+                                const noteBadge = document.createElement('span');
+                                noteBadge.className = "absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-blue-500";
+                                noteBadge.title = weekData.notes;
+                                cell.appendChild(noteBadge);
+                            }
+                        } else {
+                            cell.textContent = '-';
+                        }
+                        row.appendChild(cell);
+                    }
+                    body.appendChild(row);
+                });
+            });
+
+            // Renderizado de las Filas de Totales
+            const incomeRow = document.getElementById('total-income-row');
+            const expenseRow = document.getElementById('total-expense-row');
+            const netRow = document.getElementById('net-flow-row');
+            const accumRow = document.getElementById('accumulated-row');
+
+            while (incomeRow.children.length > 2) incomeRow.removeChild(incomeRow.lastChild);
+            while (expenseRow.children.length > 2) expenseRow.removeChild(expenseRow.lastChild);
+            while (netRow.children.length > 2) netRow.removeChild(netRow.lastChild);
+            while (accumRow.children.length > 2) accumRow.removeChild(accumRow.lastChild);
+
+            weeklyProjections.forEach((proj, idx) => {
+                const w = idx + 1;
+                const isCurrent = (w === CURRENT_WEEK_INDEX && isSelectedYearCurrentReal);
+
+                const tdInc = document.createElement('td');
+                tdInc.className = `p-2 text-right font-mono border-r border-slate-200 ${isCurrent ? 'bg-yellow-100 border-yellow-300' : ''}`;
+                tdInc.textContent = proj.income > 0 ? proj.income.toFixed(0) : '-';
+                incomeRow.appendChild(tdInc);
+
+                const tdExp = document.createElement('td');
+                tdExp.className = `p-2 text-right font-mono border-r border-slate-200 ${isCurrent ? 'bg-yellow-100 border-yellow-300' : ''}`;
+                tdExp.textContent = proj.expense > 0 ? proj.expense.toFixed(0) : '-';
+                expenseRow.appendChild(tdExp);
+
+                const tdNet = document.createElement('td');
+                tdNet.className = `p-2 text-right font-mono border-r border-slate-200 font-bold ${isCurrent ? 'bg-yellow-100 border-yellow-300' : ''}`;
+                const diff = proj.income - proj.expense;
+                if (diff > 0) {
+                    tdNet.textContent = `+${diff.toFixed(0)}`;
+                    tdNet.className += ' text-emerald-700';
+                } else if (diff < 0) {
+                    tdNet.textContent = diff.toFixed(0);
+                    tdNet.className += ' text-rose-700';
+                } else {
+                    tdNet.textContent = '0';
+                    tdNet.className += ' text-slate-400';
+                }
+                netRow.appendChild(tdNet);
+
+                const tdAccum = document.createElement('td');
+                tdAccum.className = `p-3 text-right font-mono font-black border-r border-slate-300 text-xs transition-all ${isCurrent ? 'bg-yellow-200 border-yellow-400' : ''}`;
+                tdAccum.textContent = proj.balance.toFixed(0) + ' €';
+
+                if (proj.balance < 0) {
+                    tdAccum.classList.add('bg-rose-100', 'text-rose-800', 'animate-pulse');
+                } else {
+                    tdAccum.classList.add('text-slate-900');
+                }
+                accumRow.appendChild(tdAccum);
+            });
+
+            lucide.createIcons();
+        }
+
+        // Renombrar inline categorías (con bloqueo sobre "INGRESOS RECURRENTES")
+        function enableCategoryEdit(catId) {
+            const category = appState.categories.find(c => c.id === catId);
+            if (!category || category.name.toUpperCase() === "INGRESOS RECURRENTES") return;
+
+            const targetSpan = document.getElementById(`cat-text-${catId}`);
+            if (!targetSpan) return;
+
+            const currentVal = category.name;
+            const parentTd = targetSpan.parentElement;
+
+            // Inyectar input inline de reemplazo temporal
+            parentTd.innerHTML = `
+                <div class="flex items-center gap-1 w-full">
+                    <input type="text" id="input-cat-edit-${catId}" value="${currentVal}" 
+                           class="bg-white border border-slate-400 text-slate-800 px-1 py-0.5 rounded text-xs font-bold w-full focus:outline-none focus:border-emerald-500">
+                    <button onclick="saveCategoryEdit('${catId}')" class="bg-emerald-600 hover:bg-emerald-500 text-white p-0.5 rounded shadow-xs" title="Confirmar">
+                        <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                    </button>
+                    <button onclick="recalculateAll()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 p-0.5 rounded" title="Cancelar">
+                        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+            `;
+            lucide.createIcons();
+
+            const inputEl = document.getElementById(`input-cat-edit-${catId}`);
+            inputEl.focus();
+            inputEl.select();
+            inputEl.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') saveCategoryEdit(catId);
+                if (e.key === 'Escape') recalculateAll();
+            });
+        }
+
+        function saveCategoryEdit(catId) {
+            const inputEl = document.getElementById(`input-cat-edit-${catId}`);
+            if (!inputEl) return;
+
+            const newVal = inputEl.value.trim();
+            if (!newVal) {
+                showToast("El nombre de la categoría no puede estar vacío", "warning");
+                recalculateAll();
+                return;
+            }
+
+            const category = appState.categories.find(c => c.id === catId);
+            if (category) {
+                category.name = newVal;
+                saveToLocalStorage();
+                recalculateAll();
+                showToast(`Categoría renombrada a "${newVal}"`, "success");
+            }
+        }
+
+        function getWeekDateRange(weekNum, year = 2026) {
+            let firstDayOfYear = new Date(year, 0, 1);
+            let daysOffset = (weekNum - 1) * 7;
+            let start = new Date(year, 0, 1 + daysOffset);
+            let end = new Date(year, 0, 7 + daysOffset);
+            const format = d => d.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
+            return `S${weekNum} (${format(start)} - ${format(end)})`;
+        }
+
+        // Actualizar Tarjetas Resumen (KPIs)
+        function updateKPIs(weeklyProjections) {
+            document.getElementById('kpi-initial').textContent = (parseFloat(appState.config.initialCapital) || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' €';
+
+            let totalIncome = 0;
+            let totalExpense = 0;
+            let criticalWeeks = [];
+
+            weeklyProjections.forEach((proj, idx) => {
+                totalIncome += proj.income;
+                totalExpense += proj.expense;
+                if (proj.isInsolvent) {
+                    criticalWeeks.push(idx + 1);
+                }
+            });
+
+            const finalBalance = weeklyProjections[51].balance;
+
+            document.getElementById('kpi-income').textContent = totalIncome.toLocaleString('es-ES', { minimumFractionDigits: 0 }) + ' €';
+            document.getElementById('kpi-expense').textContent = totalExpense.toLocaleString('es-ES', { minimumFractionDigits: 0 }) + ' €';
+            
+            const kpiFinal = document.getElementById('kpi-final');
+            kpiFinal.textContent = finalBalance.toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' €';
+            
+            if (finalBalance < 0) {
+                kpiFinal.className = "text-lg font-extrabold text-rose-600";
+            } else {
+                kpiFinal.className = "text-lg font-extrabold text-emerald-600";
+            }
+
+            const alertContainer = document.getElementById('kpi-alert-container');
+            const alertContent = document.getElementById('kpi-alert-content');
+
+            if (criticalWeeks.length > 0) {
+                alertContainer.className = "bg-rose-50 p-3 rounded-xl border border-rose-300 shadow-sm animate-pulse";
+                alertContent.innerHTML = `
+                    <span class="text-rose-700 flex items-center gap-1">
+                        <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-600"></i>
+                        Peligro de Descubierto en ${criticalWeeks.length} sem. (Ej: S${criticalWeeks[0]})
+                    </span>
+                `;
+            } else {
+                alertContainer.className = "bg-white p-3 rounded-xl border border-slate-200 shadow-sm";
+                alertContent.innerHTML = `
+                    <span class="text-emerald-600 flex items-center gap-1">
+                        <i data-lucide="check-circle" class="w-4 h-4 text-emerald-500"></i>
+                        Ahorro proyectado sin déficit
+                    </span>
+                `;
+            }
+            lucide.createIcons();
+        }
+
+        // Apertura de Modal e inyección de datos para edición de celdas
+        function openCellModal(categoryId, subcategoryId, weekNumber) {
+            const category = appState.categories.find(c => c.id === categoryId);
+            const subcat = category.subcategories.find(s => s.id === subcategoryId);
+            const weekData = subcat.weeks[weekNumber] || { planned: 0, real: 0, notes: "" };
+
+            activeEditContext = { categoryId, subcategoryId, weekNumber };
+
+            document.getElementById('modal-title-type').textContent = category.type === 'income' ? 'Ingreso de Fondos' : 'Gasto Programado';
+            document.getElementById('modal-subheading').textContent = `Editar registro - Semana ${weekNumber}`;
+            document.getElementById('modal-info-cat').textContent = category.name;
+            document.getElementById('modal-info-subcat').textContent = subcat.name;
+            document.getElementById('modal-info-week').textContent = getWeekDateRange(weekNumber, appState.metadata.year);
+
+            document.getElementById('input-planned').value = weekData.planned || 0;
+            document.getElementById('input-real').value = weekData.real || 0;
+            document.getElementById('input-notes').value = weekData.notes || "";
+            document.getElementById('checkbox-recurrence').checked = false;
+
+            calculateModalDiff();
+
+            const modal = document.getElementById('cell-modal');
+            modal.classList.remove('hidden');
+        }
+
+        // Cálculo de desviación en el modal
+        function calculateModalDiff() {
+            const planned = parseFloat(document.getElementById('input-planned').value) || 0;
+            const real = parseFloat(document.getElementById('input-real').value) || 0;
+            const diff = real - planned;
+
+            const diffBox = document.getElementById('modal-diff-box');
+            const diffVal = document.getElementById('modal-diff-val');
+
+            let devPct = 0;
+            if (planned > 0) {
+                devPct = (diff / planned) * 100;
+            }
+
+            diffVal.textContent = `${diff >= 0 ? '+' : ''}${diff.toLocaleString('es-ES', { minimumFractionDigits: 2 })} € (${devPct.toFixed(1)}%)`;
+
+            const isExpense = appState.categories.find(c => c.id === activeEditContext.categoryId).type === 'expense';
+            
+            if (diff === 0) {
+                diffBox.className = "p-3 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-600";
+            } else if (isExpense) {
+                if (diff > 0) {
+                    diffBox.className = "p-3 rounded-lg border border-rose-300 bg-rose-50 flex items-center justify-between text-xs text-rose-700 font-bold";
+                } else {
+                    diffBox.className = "p-3 rounded-lg border border-emerald-300 bg-emerald-50 flex items-center justify-between text-xs text-emerald-700 font-bold";
+                }
+            } else {
+                if (diff > 0) {
+                    diffBox.className = "p-3 rounded-lg border border-emerald-300 bg-emerald-50 flex items-center justify-between text-xs text-emerald-700 font-bold";
+                } else {
+                    diffBox.className = "p-3 rounded-lg border border-rose-300 bg-rose-50 flex items-center justify-between text-xs text-rose-700 font-bold";
+                }
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('cell-modal').classList.add('hidden');
+            activeEditContext = null;
+        }
+
+        // Guardar Cambios del Modal de celdas
+        function saveCellChanges() {
+            if (!activeEditContext) return;
+
+            const { categoryId, subcategoryId, weekNumber } = activeEditContext;
+            const planned = parseFloat(document.getElementById('input-planned').value) || 0;
+            const real = parseFloat(document.getElementById('input-real').value) || 0;
+            const notes = document.getElementById('input-notes').value.trim();
+            const doReplicate = document.getElementById('checkbox-recurrence').checked;
+
+            const category = appState.categories.find(c => c.id === categoryId);
+            const subcat = category.subcategories.find(s => s.id === subcategoryId);
+
+            subcat.weeks[weekNumber] = { planned, real, notes };
+
+            if (doReplicate) {
+                for (let w = weekNumber + 1; w <= 52; w++) {
+                    if (!subcat.weeks[w]) {
+                        subcat.weeks[w] = { planned: 0, real: 0, notes: "" };
+                    }
+                    subcat.weeks[w].planned = planned;
+                }
+                showToast("Cambios replicados en el horizonte temporal futuro", "success");
+            } else {
+                showToast("Registro guardado con éxito", "success");
+            }
+
+            saveToLocalStorage();
+            closeModal();
+            recalculateAll();
+        }
+
+        function deleteCellData() {
+            if (!activeEditContext) return;
+            const { categoryId, subcategoryId, weekNumber } = activeEditContext;
+            const category = appState.categories.find(c => c.id === categoryId);
+            const subcat = category.subcategories.find(s => s.id === subcategoryId);
+
+            if (subcat.weeks[weekNumber]) {
+                delete subcat.weeks[weekNumber];
+                saveToLocalStorage();
+                recalculateAll();
+                showToast("Celda restablecida", "info");
+            }
+            closeModal();
+        }
+
+        function deleteSubcategory(catId, subcatId) {
+            const category = appState.categories.find(c => c.id === catId);
+            const idx = category.subcategories.findIndex(s => s.id === subcatId);
+            if (idx !== -1) {
+                category.subcategories.splice(idx, 1);
+                saveToLocalStorage();
+                recalculateAll();
+                showToast("Línea eliminada del planificador", "info");
+            }
+        }
+
+        function addNewRowFromForm() {
+            const type = document.getElementById('new-row-type').value;
+            const catName = document.getElementById('new-row-cat').value.trim();
+            const subcatName = document.getElementById('new-row-subcat').value.trim();
+
+            if (!catName || !subcatName) {
+                showToast("Ambos campos son obligatorios", "warning");
+                return;
+            }
+
+            let category = appState.categories.find(c => c.name.toLowerCase() === catName.toLowerCase() && c.type === type);
+            
+            if (!category) {
+                const newCatId = 'cat_' + Date.now();
+                category = {
+                    id: newCatId,
+                    name: catName,
+                    type: type,
+                    subcategories: []
+                };
+                appState.categories.push(category);
+            }
+
+            const newSubcatId = 'sub_' + Date.now();
+            category.subcategories.push({
+                id: newSubcatId,
+                name: subcatName,
+                weeks: {}
+            });
+
+            document.getElementById('new-row-cat').value = '';
+            document.getElementById('new-row-subcat').value = '';
+
+            saveToLocalStorage();
+            recalculateAll();
+            showToast(`Línea "${subcatName}" creada correctamente`, "success");
+        }
+
+        function switchTab(tabId) {
+            document.getElementById('tab-grid').classList.add('hidden');
+            document.getElementById('tab-charts').classList.add('hidden');
+            
+            document.getElementById('btn-tab-grid').className = "px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-800 border-b-2 border-transparent flex items-center gap-2";
+            document.getElementById('btn-tab-charts').className = "px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-800 border-b-2 border-transparent flex items-center gap-2";
+
+            document.getElementById(tabId).classList.remove('hidden');
+
+            if (tabId === 'tab-grid') {
+                document.getElementById('btn-tab-grid').className = "px-4 py-2 text-sm font-bold border-b-2 border-emerald-600 text-emerald-600 flex items-center gap-2";
+            } else if (tabId === 'tab-charts') {
+                document.getElementById('btn-tab-charts').className = "px-4 py-2 text-sm font-bold border-b-2 border-emerald-600 text-emerald-600 flex items-center gap-2";
+                const weeklyProjections = calculateCashFlowProjection();
+                updateCharts(weeklyProjections);
+            }
+        }
+
+        function scrollToWeek(weekNum) {
+            const tableContainer = document.querySelector('.table-container');
+            const headers = document.querySelectorAll('#table-head-weeks th');
+            
+            const targetHeader = headers[weekNum + 1]; 
+            if (targetHeader && tableContainer) {
+                const containerOffset = tableContainer.getBoundingClientRect().left;
+                const targetOffset = targetHeader.getBoundingClientRect().left;
+                const scrollLeftOffset = targetOffset - containerOffset - 340; 
+                
+                tableContainer.scrollTo({
+                    left: tableContainer.scrollLeft + scrollLeftOffset,
+                    behavior: 'smooth'
+                });
+                showToast(`Desplazado a Semana ${weekNum}`, "info");
+            }
+        }
+
+        // RENDERIZADO GRÁFICO (CHART.JS)
+        function updateCharts(weeklyProjections) {
+            const labels = Array.from({ length: 52 }, (_, i) => `S${i + 1}`);
+            const balanceData = weeklyProjections.map(p => p.balance);
+            const incomeData = weeklyProjections.map(p => p.income);
+            const expenseData = weeklyProjections.map(p => p.expense);
+
+            if (balanceChartInstance) balanceChartInstance.destroy();
+            if (weeklyBarChartInstance) weeklyBarChartInstance.destroy();
+            if (expensePieChartInstance) expensePieChartInstance.destroy();
+
+            // 1. Gráfico de Línea de Reserva
+            const ctxBalance = document.getElementById('balanceChart').getContext('2d');
+            balanceChartInstance = new Chart(ctxBalance, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Fondo de Reserva (€)',
+                        data: balanceData,
+                        borderColor: '#10b981', 
+                        backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                        borderWidth: 3,
+                        tension: 0.1,
+                        fill: true,
+                        segment: {
+                            borderColor: ctx => ctx.p0.parsed.y < 0 || ctx.p1.parsed.y < 0 ? '#ef4444' : '#10b981',
+                            backgroundColor: ctx => ctx.p0.parsed.y < 0 || ctx.p1.parsed.y < 0 ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.05)'
+                        }
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: '#f1f5f9' },
+                            ticks: { font: { size: 10 } }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { size: 9 }, maxTicksLimit: 26 }
+                        }
+                    }
+                }
+            });
+
+            // 2. Gráfico de barras comparativo: Ingresos vs Gastos
+            const ctxBar = document.getElementById('weeklyBarChart').getContext('2d');
+            weeklyBarChartInstance = new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Ingresos',
+                            data: incomeData,
+                            backgroundColor: '#34d399',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Gastos',
+                            data: expenseData,
+                            backgroundColor: '#fb7185',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            grid: { color: '#f1f5f9' },
+                            ticks: { font: { size: 10 } }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { size: 9 }, maxTicksLimit: 26 }
+                        }
+                    }
+                }
+            });
+
+            // 3. Gráfico de Sectores: Distribución de Gastos
+            const expenseCategories = appState.categories.filter(c => c.type === 'expense');
+            const categoryNames = [];
+            const categorySums = [];
+
+            expenseCategories.forEach(cat => {
+                let sum = 0;
+                cat.subcategories.forEach(sub => {
+                    for (let w = 1; w <= 52; w++) {
+                        if (sub.weeks[w]) {
+                            sum += sub.weeks[w].real || sub.weeks[w].planned || 0;
+                        }
+                    }
+                });
+                if (sum > 0) {
+                    categoryNames.push(cat.name);
+                    categorySums.push(sum);
+                }
+            });
+
+            const ctxPie = document.getElementById('expensePieChart').getContext('2d');
+            expensePieChartInstance = new Chart(ctxPie, {
+                type: 'doughnut',
+                data: {
+                    labels: categoryNames,
+                    datasets: [{
+                        data: categorySums,
+                        backgroundColor: [
+                            '#fb7185', '#60a5fa', '#fbbf24', '#34d399', '#a78bfa', '#f472b6'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { boxWidth: 12, font: { size: 11 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        // CONTROLADOR MODAL WHATSAPP & PORTAPAPELES
+        function openWhatsAppModal() {
+            const year = appState.metadata.year || 2026;
+            
+            // Traducir dinámicamente las etiquetas del modal basándose en el mes actual del sistema
+            const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            const currentMonthName = months[CURRENT_MONTH_INDEX];
+
+            document.getElementById('whatsapp-range-week-label').textContent = `Semana ${CURRENT_WEEK_INDEX}`;
+            document.getElementById('whatsapp-range-month-label').textContent = `${currentMonthName} ${year}`;
+
+            updateWhatsAppPreview();
+
+            const modal = document.getElementById('whatsapp-modal');
+            modal.classList.remove('hidden');
+        }
+
+        function closeWhatsAppModal() {
+            document.getElementById('whatsapp-modal').classList.add('hidden');
+        }
+
+        function saveLastPhone() {
+            const phone = document.getElementById('input-phone').value.trim();
+            localStorage.setItem('cashflow_last_phone', phone);
+            updateWhatsAppPreview();
+        }
+
+        // Genera el reporte de texto plano adaptado a los últimos requisitos dinámicos
+        function updateWhatsAppPreview() {
+            const type = document.querySelector('input[name="report-range"]:checked').value;
+            const year = appState.metadata.year || 2026;
+            const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            const currentMonthName = months[CURRENT_MONTH_INDEX];
+
+            let text = "";
+            let income = 0;
+            let expense = 0;
+            let netFlow = 0;
+
+            if (type === 'week') {
+                const w = CURRENT_WEEK_INDEX;
+                const dateRange = getWeekDateRange(w, year);
+                text += `📊 *ESTADO SEMANAL DE GASTOS* 📊\n`;
+                text += `📅 *Semana ${w}* (${year})\n`;
+                text += `🗓️ _Rango: ${dateRange.replace(`S${w} (`, '').replace(')', '')}_\n\n`;
+
+                const weeklyProjections = calculateCashFlowProjection();
+                const proj = weeklyProjections[w - 1];
+                income = proj.income;
+                expense = proj.expense;
+                netFlow = income - expense;
+
+                text += `🟢 *Ingresos Mensuales:* ${income.toFixed(0)} €\n`;
+                text += `🔴 *Gastos Semanales:* ${expense.toFixed(0)} €\n`;
+                text += `⚖️ *Flujo Neto del Mes:* ${netFlow.toFixed(0)} €\n\n`;
+
+                text += `📝 *Detalle de Movimientos en S${w}:*\n`;
+                appState.categories.forEach(category => {
+                    category.subcategories.forEach(subcat => {
+                        const weekData = subcat.weeks[w];
+                        if (weekData && (weekData.planned !== 0 || weekData.real !== 0)) {
+                            const val = weekData.real !== 0 ? weekData.real : weekData.planned;
+                            const status = weekData.real !== 0 ? "Real" : "Previsto";
+                            
+                            let emoji = "⚪";
+                            let excessAlert = "";
+                            if (category.type === 'expense') {
+                                if (weekData.real > weekData.planned && weekData.real !== 0) {
+                                    emoji = "🔴";
+                                    excessAlert = " ⚠️ *¡Exceso!*";
+                                }
+                            } else {
+                                emoji = "🟢";
+                            }
+
+                            text += `${emoji} *${subcat.name}:* ${val.toFixed(0)}€ (${status})${excessAlert}\n`;
+                            if (weekData.notes) {
+                                text += `   _${weekData.notes}_\n`;
+                            }
+                        }
+                    });
+                });
+            } else {
+                text += `📊 *ESTADO MENSUAL DE GASTOS* 📊\n`;
+                text += `📅 *Mes de ${currentMonthName}* (${year})\n\n`;
+
+                // Agrupar dinámicamente semanas que caen dentro del mes seleccionado (ej: Julio son semanas 27-31)
+                // Usamos un aproximador matemático simple de semanas por mes (4.33 semanas por mes)
+                const startWeek = Math.max(Math.floor(CURRENT_MONTH_INDEX * 4.33) + 1, 1);
+                const endWeek = Math.min(Math.ceil((CURRENT_MONTH_INDEX + 1) * 4.33), 52);
+                
+                const monthWeeks = [];
+                for (let i = startWeek; i <= endWeek; i++) monthWeeks.push(i);
+
+                const weeklyProjections = calculateCashFlowProjection();
+                monthWeeks.forEach(w => {
+                    const proj = weeklyProjections[w - 1];
+                    income += proj.income;
+                    expense += proj.expense;
+                });
+                netFlow = income - expense;
+
+                text += `🟢 *Ingresos Mensuales:* ${income.toFixed(0)} €\n`;
+                text += `🔴 *Gastos Mensuales:* ${expense.toFixed(0)} €\n`;
+                text += `⚖️ *Flujo Neto del Mes:* ${netFlow.toFixed(0)} €\n\n`;
+
+                text += `📝 *Detalle de Movimientos en ${currentMonthName}:*\n`;
+                appState.categories.forEach(category => {
+                    category.subcategories.forEach(subcat => {
+                        let subPlannedTotal = 0;
+                        let subRealTotal = 0;
+                        let subHasData = false;
+                        let subNotes = [];
+
+                        monthWeeks.forEach(w => {
+                            const weekData = subcat.weeks[w];
+                            if (weekData) {
+                                subPlannedTotal += weekData.planned || 0;
+                                subRealTotal += weekData.real || 0;
+                                subHasData = true;
+                                if (weekData.notes) subNotes.push(`S${w}: ${weekData.notes}`);
+                            }
+                        });
+
+                        if (subHasData && (subPlannedTotal > 0 || subRealTotal > 0)) {
+                            const isExpense = category.type === 'expense';
+                            const val = subRealTotal !== 0 ? subRealTotal : subPlannedTotal;
+                            const status = subRealTotal !== 0 ? "Real" : "Previsto";
+                            
+                            let emoji = "⚪";
+                            let excessAlert = "";
+                            if (isExpense) {
+                                if (subRealTotal > subPlannedTotal && subRealTotal !== 0) {
+                                    emoji = "🔴";
+                                    excessAlert = " ⚠️ *¡Exceso!*";
+                                }
+                            } else {
+                                emoji = "🟢";
+                            }
+
+                            text += `${emoji} *${subcat.name}:* ${val.toFixed(0)}€ (${status})${excessAlert}\n`;
+                            if (subNotes.length > 0) {
+                                text += `   _${subNotes.join(', ')}_\n`;
+                            }
+                        }
+                    });
+                });
+            }
+
+            text += `\n📱 _Enviado automáticamente desde el Spending Forecast_`;
+            document.getElementById('whatsapp-preview-text').textContent = text;
+        }
+
+        // Copiar reporte dinámico al portapapeles con máxima compatibilidad de iframes
+        function copyReportToClipboard() {
+            const text = document.getElementById('whatsapp-preview-text').textContent;
+            
+            const tempTextarea = document.createElement('textarea');
+            tempTextarea.value = text;
+            tempTextarea.style.position = 'fixed';
+            tempTextarea.style.opacity = '0';
+            document.body.appendChild(tempTextarea);
+            tempTextarea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showToast("Reporte financiero copiado al portapapeles", "success");
+                } else {
+                    showToast("No se pudo copiar el reporte", "warning");
+                }
+            } catch (err) {
+                showToast("Error en el acceso al portapapeles", "danger");
+            }
+            document.body.removeChild(tempTextarea);
+        }
+
+        function sendWhatsAppReport() {
+            const phone = document.getElementById('input-phone').value.trim();
+            const text = document.getElementById('whatsapp-preview-text').textContent;
+
+            if (!phone) {
+                showToast("Es obligatorio ingresar un número telefónico", "warning");
+                return;
+            }
+
+            const encodedText = encodeURIComponent(text);
+            const url = `https://api.whatsapp.com/send?phone=${phone}&text=${encodedText}`;
+            window.open(url, '_blank');
+            showToast("Redirigiendo a WhatsApp...", "success");
+        }
+
+        // EXPORTACIÓN E IMPORTACIÓN DE ARCHIVOS JSON
+        function exportData() {
+            const currentYear = appState.metadata.year || 2026;
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `SpendingForecast_${currentYear}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+            showToast("Archivo JSON exportado", "success");
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedState = JSON.parse(e.target.result);
+                    if (importedState && importedState.categories && Array.isArray(importedState.categories)) {
+                        appState = importedState;
+                        
+                        document.getElementById('year-selector').value = appState.metadata.year || 2026;
+                        document.getElementById('initial-capital-input').value = appState.config.initialCapital;
+                        saveToLocalStorage();
+                        recalculateAll();
+                        showToast("Configuración importada con éxito", "success");
+                    } else {
+                        showToast("Esquema JSON no válido", "warning");
+                    }
+                } catch (err) {
+                    showToast("Error al procesar el archivo de datos", "danger");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // TOAST NOTIFICATIONS (Alternativa limpia a alert())
+        function showToast(message, type = "success") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let bg = "bg-slate-900 border-slate-700 text-white";
+            let icon = "info";
+
+            if (type === "success") {
+                bg = "bg-emerald-950 border-emerald-800 text-emerald-300";
+                icon = "check-circle";
+            } else if (type === "warning") {
+                bg = "bg-amber-950 border-amber-800 text-amber-300";
+                icon = "alert-triangle";
+            } else if (type === "danger") {
+                bg = "bg-rose-950 border-rose-800 text-rose-300";
+                icon = "alert-circle";
+            }
+
+            toast.className = `p-3.5 rounded-xl border ${bg} flex items-center gap-2.5 shadow-xl transition-all duration-300 transform translate-y-5 opacity-0 text-xs font-semibold pointer-events-auto`;
+            toast.innerHTML = `
+                <i data-lucide="${icon}" class="w-4 h-4"></i>
+                <span>${message}</span>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-5', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
