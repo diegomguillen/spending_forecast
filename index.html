@@ -202,22 +202,42 @@
         <!-- CONTENIDO: VISTA CALENDARIO MATRICIAL -->
         <div id="tab-grid" class="flex-1 flex flex-col gap-4">
             
-            <!-- Herramientas de Edición de Categorías -->
-            <div class="bg-white p-3 rounded-lg border border-slate-200 flex flex-wrap items-center justify-between gap-3 shadow-sm">
-                <div class="flex items-center gap-2 flex-wrap text-xs font-semibold">
-                    <span class="text-slate-600 uppercase">AÑADIR NUEVA FILA:</span>
-                    <select id="new-row-type" class="bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-emerald-500">
-                        <option value="income">Ingresos</option>
-                        <option value="expense">Gastos (Pagos)</option>
-                    </select>
-                    <input type="text" id="new-row-cat" placeholder="Categoría (Ej: Hogar)" class="bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 w-36 focus:outline-none focus:border-emerald-500">
-                    <input type="text" id="new-row-subcat" placeholder="Subcategoría (Ej: Internet)" class="bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 w-44 focus:outline-none focus:border-emerald-500">
-                    <button onclick="addNewRowFromForm()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition-all shadow-sm">
-                        <i data-lucide="plus-circle" class="w-4 h-4"></i> Insertar
-                    </button>
+            <!-- Herramientas de Edición de Categorías e Importación CSV -->
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <!-- AÑADIR NUEVA FILA -->
+                <div class="bg-white p-4 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+                    <div class="flex items-center gap-2 flex-wrap text-xs font-semibold">
+                        <span class="text-slate-600 uppercase">AÑADIR NUEVA FILA:</span>
+                        <select id="new-row-type" class="bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-emerald-500">
+                            <option value="income">Ingresos</option>
+                            <option value="expense">Gastos (Pagos)</option>
+                        </select>
+                        <input type="text" id="new-row-cat" placeholder="Categoría (Ej: Hogar)" class="bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 w-36 focus:outline-none focus:border-emerald-500">
+                        <input type="text" id="new-row-subcat" placeholder="Subcategoría (Ej: Internet)" class="bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 w-44 focus:outline-none focus:border-emerald-500">
+                        <button onclick="addNewRowFromForm()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition-all shadow-sm">
+                            <i data-lucide="plus-circle" class="w-4 h-4"></i> Insertar
+                        </button>
+                    </div>
                 </div>
-                <div class="text-[11px] text-slate-400">
-                    * Consejo: Haga clic en cualquier celda de cantidad para editar o programar recurrencias.
+                
+                <!-- IMPORTAR CSV BANCARIO -->
+                <div class="bg-white p-4 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+                    <div class="flex items-center gap-3 flex-wrap text-xs font-semibold">
+                        <span class="text-slate-600 uppercase flex items-center gap-1">
+                            <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-500"></i> Importar CSV Bancario:
+                        </span>
+                        <div class="flex items-center gap-1">
+                            <span class="text-slate-500 font-medium">Semana:</span>
+                            <input type="number" id="csv-import-week" min="1" max="52" class="w-14 bg-slate-50 border border-slate-300 rounded px-2 py-1.5 text-center font-bold focus:outline-none focus:border-emerald-500">
+                        </div>
+                        <input type="file" id="csv-import-file" class="hidden" accept=".csv" onchange="importCSVData(event)">
+                        <button onclick="document.getElementById('csv-import-file').click()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition-all shadow-sm">
+                            <i data-lucide="upload-cloud" class="w-4 h-4"></i> Cargar .csv
+                        </button>
+                    </div>
+                    <div class="text-[11px] text-slate-400">
+                        * Agrupará por subcategoría y sumará importes (tipo Ingreso restará).
+                    </div>
                 </div>
             </div>
 
@@ -244,6 +264,11 @@
                         <tr id="total-expense-row" class="bg-rose-50/50 font-bold border-t border-slate-100 text-rose-800">
                             <td class="sticky-col-1 p-2 text-left shadow-sm w-[160px] min-w-[160px] max-w-[160px] overflow-hidden text-ellipsis">Gastos Totales (€)</td>
                             <td class="sticky-col-2 p-2 border-r-2 border-slate-300 w-[180px] min-w-[180px] max-w-[180px] overflow-hidden text-ellipsis">Suma Semanal</td>
+                            <!-- Valores calculados dinámicamente -->
+                        </tr>
+                        <tr id="expense-diff-row" class="bg-slate-50 font-bold border-t border-slate-100 text-slate-700">
+                            <td class="sticky-col-1 p-2 text-left shadow-sm w-[160px] min-w-[160px] max-w-[160px] overflow-hidden text-ellipsis">Diferencia Gastos (€)</td>
+                            <td class="sticky-col-2 p-2 border-r-2 border-slate-300 w-[180px] min-w-[180px] max-w-[180px] overflow-hidden text-ellipsis">Previsto - Real</td>
                             <!-- Valores calculados dinámicamente -->
                         </tr>
                         <tr id="net-flow-row" class="bg-slate-50 font-bold border-t border-slate-200 text-slate-700">
@@ -476,7 +501,7 @@
                     <label class="border border-slate-200 hover:border-emerald-500 rounded-xl p-3 flex items-center gap-3 cursor-pointer select-none transition-all">
                         <input type="radio" name="report-range" value="week" checked onchange="updateWhatsAppPreview()" class="w-4 h-4 text-emerald-600 focus:ring-emerald-500">
                         <div>
-                            <span class="block text-xs font-bold text-slate-800">Semana Actual</span>
+                            <span class="block text-xs font-bold text-slate-800">Semana</span>
                             <span class="text-[10px] text-slate-400" id="whatsapp-range-week-label">Semana 29</span>
                         </div>
                     </label>
@@ -487,6 +512,14 @@
                             <span class="text-[10px] text-slate-400" id="whatsapp-range-month-label">Julio 2026</span>
                         </div>
                     </label>
+                </div>
+
+                <!-- Selector de Semana para Reporte -->
+                <div id="whatsapp-week-select-container" class="flex items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-xl p-3">
+                    <span class="text-xs text-slate-600 font-bold uppercase tracking-wide flex items-center gap-1">
+                        <i data-lucide="calendar" class="w-4 h-4 text-emerald-600"></i> Seleccionar Semana:
+                    </span>
+                    <input type="number" id="whatsapp-selected-week" min="1" max="52" oninput="updateWhatsAppPreview()" class="w-16 bg-white border border-slate-300 rounded px-2 py-1 text-center font-bold focus:outline-none focus:border-emerald-500 text-xs">
                 </div>
 
                 <!-- Previsualización del Texto -->
@@ -724,6 +757,12 @@
                 document.getElementById('input-phone').value = savedPhone;
             }
 
+            // Inicializar número de semana en el importador de CSV
+            const csvWeekInput = document.getElementById('csv-import-week');
+            if (csvWeekInput) {
+                csvWeekInput.value = CURRENT_WEEK_INDEX;
+            }
+
             // Verificar si hay año anterior para mostrar el botón de rollover
             checkPreviousYearRollover();
 
@@ -742,17 +781,34 @@
             }
         }
 
+        // Encuentra el lunes de la semana 1 del año (el lunes de la semana que contiene el 1 de enero)
+        function getMondayOfWeek1(year) {
+            const jan1 = new Date(year, 0, 1);
+            const day = jan1.getDay();
+            const diff = (day === 0) ? -6 : 1 - day;
+            return new Date(year, 0, 1 + diff);
+        }
+
+        // Obtiene la fecha del lunes de la semana 'w' en el año 'year'
+        function getMondayOfWeek(w, year) {
+            const monday1 = getMondayOfWeek1(year);
+            return new Date(monday1.getTime() + (w - 1) * 7 * 24 * 60 * 60 * 1000);
+        }
+
+        // Obtiene el número de semana (1-52) para cualquier fecha dada
+        function getWeekNumberForDate(date) {
+            const year = date.getFullYear();
+            const monday1 = getMondayOfWeek1(year);
+            const diffMs = date.getTime() - monday1.getTime();
+            const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+            const week = Math.floor(diffDays / 7) + 1;
+            return Math.min(Math.max(week, 1), 52);
+        }
+
         // Calcula dinámicamente la semana del año actual basándose en la fecha real del sistema
         function detectRealTimeParameters() {
             const today = new Date();
-            const currentRealYear = today.getFullYear();
-            
-            // Determinar semana del año (1-52)
-            const startOfYear = new Date(currentRealYear, 0, 1);
-            const pastDaysOfYear = (today - startOfYear) / 86400000;
-            const calculatedWeek = Math.ceil((pastDaysOfYear + startOfYear.getDay() + 1) / 7);
-            
-            CURRENT_WEEK_INDEX = Math.min(Math.max(calculatedWeek, 1), 52);
+            CURRENT_WEEK_INDEX = getWeekNumberForDate(today);
             CURRENT_MONTH_INDEX = today.getMonth(); // 0 = Ene, 11 = Dic
         }
 
@@ -1119,9 +1175,14 @@
 
                 for (let w = 1; w <= 52; w++) {
                     const rollupTd = document.createElement('td');
-                    rollupTd.className = `p-2 text-right border-r border-slate-200 font-mono text-[11px] font-bold w-[70px] min-w-[70px] max-w-[70px] ${(w === CURRENT_WEEK_INDEX && isSelectedYearCurrentReal) ? 'current-week-col' : 'bg-slate-100/50'}`;
+                    rollupTd.className = `p-2 text-right border-r border-slate-200 font-mono text-[11px] font-bold w-[70px] min-w-[70px] max-w-[70px] relative ${(w === CURRENT_WEEK_INDEX && isSelectedYearCurrentReal) ? 'current-week-col' : 'bg-slate-100/50'}`;
                     
                     let catSum = 0;
+                    let totalPlanned = 0;
+                    let totalReal = 0;
+                    let hasNotes = false;
+                    let combinedNotes = [];
+
                     category.subcategories.forEach(subcat => {
                         const weekData = subcat.weeks[w];
                         if (weekData) {
@@ -1129,20 +1190,48 @@
                                 ? weekData.real
                                 : (weekData.planned || 0);
                             catSum += val;
+
+                            totalPlanned += weekData.planned || 0;
+                            totalReal += weekData.real || 0;
+
+                            if (weekData.notes && weekData.notes.trim() !== '') {
+                                hasNotes = true;
+                                combinedNotes.push(`${subcat.name}: ${weekData.notes}`);
+                            }
                         }
                     });
 
                     if (catSum > 0) {
-                        rollupTd.textContent = catSum.toFixed(0);
-                        if (category.type === 'income') {
-                            rollupTd.className += ' text-emerald-800';
-                        } else {
-                            rollupTd.className += ' text-slate-700';
+                        const sumColor = category.type === 'income' ? 'text-emerald-800' : 'text-slate-700';
+                        
+                        // Calcular previsto - real para la categoría
+                        const diff = category.type === 'income' ? (totalReal - totalPlanned) : (totalPlanned - totalReal);
+                        let diffHtml = '';
+                        if (diff > 0) {
+                            diffHtml = `<span class="block text-[9px] text-emerald-600 font-sans font-bold">Dif: +${diff.toFixed(0)}</span>`;
+                        } else if (diff < 0) {
+                            diffHtml = `<span class="block text-[9px] text-rose-600 font-sans font-bold">Dif: ${diff.toFixed(0)}</span>`;
+                        } else if (totalPlanned > 0 || totalReal > 0) {
+                            diffHtml = `<span class="block text-[9px] text-slate-400 font-sans font-normal">Dif: 0</span>`;
                         }
+                        
+                        rollupTd.innerHTML = `<span class="${sumColor}">${catSum.toFixed(0)}</span>${diffHtml}`;
                     } else {
                         rollupTd.textContent = '-';
                         rollupTd.className += ' text-slate-400';
                     }
+
+                    // Inyectar el punto de color si hay notas en alguna de las subcategorías
+                    if (hasNotes) {
+                        const noteBadge = document.createElement('span');
+                        const isOverBudget = (category.type === 'expense' && totalReal > totalPlanned);
+                        const dotColor = isOverBudget ? 'bg-rose-500' : 'bg-blue-500';
+                        
+                        noteBadge.className = `absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${dotColor}`;
+                        noteBadge.title = combinedNotes.join(' | ');
+                        rollupTd.appendChild(noteBadge);
+                    }
+
                     catRow.appendChild(rollupTd);
                 }
                 body.appendChild(catRow);
@@ -1208,8 +1297,7 @@
 
                             if (weekData.notes && weekData.notes.trim() !== '') {
                                 const noteBadge = document.createElement('span');
-                                // Determinar color del punto: rojo si real > previsto, azul si <= previsto
-                                const isOverBudget = (category.type === 'expense' && real > planned && planned > 0 && real > 0);
+                                const isOverBudget = (category.type === 'expense' && real > planned);
                                 const dotColor = isOverBudget ? 'bg-rose-500' : 'bg-blue-500';
                                 
                                 noteBadge.className = `absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${dotColor}`;
@@ -1228,11 +1316,13 @@
             // Renderizado de las Filas de Totales
             const incomeRow = document.getElementById('total-income-row');
             const expenseRow = document.getElementById('total-expense-row');
+            const diffRow = document.getElementById('expense-diff-row');
             const netRow = document.getElementById('net-flow-row');
             const accumRow = document.getElementById('accumulated-row');
 
             while (incomeRow.children.length > 2) incomeRow.removeChild(incomeRow.lastChild);
             while (expenseRow.children.length > 2) expenseRow.removeChild(expenseRow.lastChild);
+            while (diffRow.children.length > 2) diffRow.removeChild(diffRow.lastChild);
             while (netRow.children.length > 2) netRow.removeChild(netRow.lastChild);
             while (accumRow.children.length > 2) accumRow.removeChild(accumRow.lastChild);
 
@@ -1249,6 +1339,35 @@
                 tdExp.className = `p-2 text-right font-mono border-r border-slate-200 w-[70px] min-w-[70px] max-w-[70px] ${isCurrent ? 'bg-yellow-100 border-yellow-300' : ''}`;
                 tdExp.textContent = proj.expense > 0 ? proj.expense.toFixed(0) : '-';
                 expenseRow.appendChild(tdExp);
+
+                // Calcular Diferencia Previsto - Real para Gastos
+                let plannedSum = 0;
+                let realSum = 0;
+                appState.categories.forEach(category => {
+                    if (category.type === 'expense') {
+                        category.subcategories.forEach(subcat => {
+                            const weekData = subcat.weeks[w];
+                            if (weekData) {
+                                plannedSum += weekData.planned || 0;
+                                realSum += weekData.real || 0;
+                            }
+                        });
+                    }
+                });
+                const expenseDiff = plannedSum - realSum;
+                const tdDiff = document.createElement('td');
+                tdDiff.className = `p-2 text-right font-mono border-r border-slate-200 w-[70px] min-w-[70px] max-w-[70px] ${isCurrent ? 'bg-yellow-100 border-yellow-300' : ''}`;
+                if (expenseDiff > 0) {
+                    tdDiff.textContent = `+${expenseDiff.toFixed(0)}`;
+                    tdDiff.className += ' text-emerald-700 font-bold';
+                } else if (expenseDiff < 0) {
+                    tdDiff.textContent = expenseDiff.toFixed(0);
+                    tdDiff.className += ' text-rose-700 font-bold';
+                } else {
+                    tdDiff.textContent = '0';
+                    tdDiff.className += ' text-slate-400';
+                }
+                diffRow.appendChild(tdDiff);
 
                 const tdNet = document.createElement('td');
                 tdNet.className = `p-2 text-right font-mono border-r border-slate-200 font-bold w-[70px] min-w-[70px] max-w-[70px] ${isCurrent ? 'bg-yellow-100 border-yellow-300' : ''}`;
@@ -1351,10 +1470,8 @@
         }
 
         function getWeekDateRange(weekNum, year = 2026) {
-            let firstDayOfYear = new Date(year, 0, 1);
-            let daysOffset = (weekNum - 1) * 7;
-            let start = new Date(year, 0, 1 + daysOffset);
-            let end = new Date(year, 0, 7 + daysOffset);
+            const start = getMondayOfWeek(weekNum, year);
+            const end = new Date(start.getTime() + 6 * 24 * 60 * 60 * 1000);
             const format = d => d.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
             return `S${weekNum} (${format(start)} - ${format(end)})`;
         }
@@ -1420,8 +1537,7 @@
                     return parseInt(match[1]);
                 }
             }
-            let daysOffset = (weekNum - 1) * 7;
-            let start = new Date(year, 0, 1 + daysOffset);
+            const start = getMondayOfWeek(weekNum, year);
             return start.getDate();
         }
 
@@ -1430,10 +1546,7 @@
             const lastDay = new Date(year, month + 1, 0).getDate();
             const clampedDay = Math.min(Math.max(dayOfMonth, 1), lastDay);
             const targetDate = new Date(year, month, clampedDay);
-            
-            const startOfYear = new Date(year, 0, 1);
-            const diffDays = Math.round((targetDate - startOfYear) / 86400000);
-            return Math.min(Math.max(Math.floor(diffDays / 7) + 1, 1), 52);
+            return getWeekNumberForDate(targetDate);
         }
 
         function updateNotesPrefix(day) {
@@ -1467,9 +1580,7 @@
                     let targetDay = Math.min(dayOfMonth, lastDay);
                     let targetDate = new Date(year, m, targetDay);
                     
-                    let startOfYear = new Date(year, 0, 1);
-                    let diffDays = Math.round((targetDate - startOfYear) / 86400000);
-                    let w = Math.min(Math.floor(diffDays / 7) + 1, 52);
+                    let w = getWeekNumberForDate(targetDate);
                     if (w >= startWeek && !weeks.includes(w)) {
                         weeks.push(w);
                     }
@@ -1479,9 +1590,7 @@
                 let targetDay = Math.min(dayOfMonth, lastDay);
                 let targetDate = new Date(year, currentMonth, targetDay);
                 
-                let startOfYear = new Date(year, 0, 1);
-                let diffDays = Math.round((targetDate - startOfYear) / 86400000);
-                let w = Math.min(Math.floor(diffDays / 7) + 1, 52);
+                let w = getWeekNumberForDate(targetDate);
                 if (w >= startWeek) {
                     weeks.push(w);
                 }
@@ -1578,8 +1687,7 @@
             if (noteMatch) {
                 dayVal = parseInt(noteMatch[1]);
             } else {
-                let daysOffset = (weekNumber - 1) * 7;
-                let start = new Date(year, 0, 1 + daysOffset);
+                const start = getMondayOfWeek(weekNumber, year);
                 dayVal = start.getDate();
             }
 
@@ -2063,6 +2171,12 @@
             document.getElementById('whatsapp-range-week-label').textContent = `Semana ${CURRENT_WEEK_INDEX}`;
             document.getElementById('whatsapp-range-month-label').textContent = `${currentMonthName} ${year}`;
 
+            // Inicializar el selector de semana
+            const weekInput = document.getElementById('whatsapp-selected-week');
+            if (weekInput) {
+                weekInput.value = CURRENT_WEEK_INDEX;
+            }
+
             updateWhatsAppPreview();
 
             const modal = document.getElementById('whatsapp-modal');
@@ -2090,8 +2204,17 @@
             let expense = 0;
             let netFlow = 0;
 
+            const weekSelectContainer = document.getElementById('whatsapp-week-select-container');
+            if (weekSelectContainer) {
+                if (type === 'week') {
+                    weekSelectContainer.classList.remove('hidden');
+                } else {
+                    weekSelectContainer.classList.add('hidden');
+                }
+            }
+
             if (type === 'week') {
-                const w = CURRENT_WEEK_INDEX;
+                const w = parseInt(document.getElementById('whatsapp-selected-week').value) || CURRENT_WEEK_INDEX;
                 const dateRange = getWeekDateRange(w, year);
                 text += `📊 *ESTADO SEMANAL DE GASTOS* 📊\n`;
                 text += `📅 *Semana ${w}* (${year})\n`;
@@ -2336,6 +2459,282 @@
                     }
                 } catch (err) {
                     showToast("Error al procesar el archivo de datos", "danger");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // --- IMPORTACIÓN Y PROCESAMIENTO DE CSV BANCARIO ---
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ';' && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current.trim());
+            return result;
+        }
+
+        function parseAmount(val) {
+            if (!val) return 0;
+            // Reemplaza la coma decimal por punto y limpia caracteres no numéricos
+            let clean = val.toString().replace(/,/g, '.').replace(/[^\d\.-]/g, '');
+            return parseFloat(clean) || 0;
+        }
+
+        function findSubcategoryByName(name) {
+            name = name.trim().toLowerCase();
+            for (let cat of appState.categories) {
+                for (let sub of cat.subcategories) {
+                    if (sub.name.trim().toLowerCase() === name) {
+                        return { category: cat, subcategory: sub };
+                    }
+                }
+            }
+            return null;
+        }
+
+        function importCSVData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const weekInput = document.getElementById('csv-import-week');
+            const weekNum = parseInt(weekInput.value);
+            if (isNaN(weekNum) || weekNum < 1 || weekNum > 52) {
+                showToast("Por favor, introduce un número de semana válido (1-52)", "warning");
+                event.target.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const text = e.target.result;
+                    const lines = text.split(/\r?\n/);
+                    if (lines.length < 2) {
+                        showToast("El archivo CSV está vacío o no es válido", "warning");
+                        event.target.value = '';
+                        return;
+                    }
+
+                    // Analizar cabecera
+                    const headerLine = lines[0];
+                    const headers = parseCSVLine(headerLine);
+                    
+                    // Encontrar índices de columnas requeridas
+                    const idxCategory = headers.indexOf('category');
+                    const idxRefAmount = headers.indexOf('ref_currency_amount');
+                    const idxType = headers.indexOf('type');
+                    const idxNote = headers.indexOf('note');
+                    const idxPayee = headers.indexOf('payee');
+                    const idxDate = headers.indexOf('date');
+
+                    if (idxCategory === -1 || idxRefAmount === -1 || idxType === -1) {
+                        showToast("Formato CSV no compatible (debe incluir: category, ref_currency_amount, type)", "danger");
+                        event.target.value = '';
+                        return;
+                    }
+
+                    // Agrupar transacciones por subcategoría
+                    const groups = {};
+
+                    for (let i = 1; i < lines.length; i++) {
+                        const line = lines[i].trim();
+                        if (!line) continue;
+
+                        const cols = parseCSVLine(line);
+                        if (cols.length < Math.max(idxCategory, idxRefAmount, idxType) + 1) {
+                            continue; // Ignorar líneas incompletas
+                        }
+
+                        const subcatName = cols[idxCategory];
+                        if (!subcatName) continue;
+
+                        const amount = parseAmount(cols[idxRefAmount]);
+                        const type = cols[idxType] ? cols[idxType].trim() : '';
+                        
+                        let noteText = '';
+                        if (idxNote !== -1 && cols[idxNote]) {
+                            noteText = cols[idxNote].trim();
+                        }
+                        if (idxPayee !== -1 && cols[idxPayee]) {
+                            const payeeVal = cols[idxPayee].trim();
+                            if (payeeVal) {
+                                noteText = noteText ? `${noteText} (${payeeVal})` : payeeVal;
+                            }
+                        }
+
+                        let transactionDate = null;
+                        if (idxDate !== -1 && cols[idxDate]) {
+                            const parsedDate = new Date(cols[idxDate].trim());
+                            if (!isNaN(parsedDate.getTime())) {
+                                transactionDate = parsedDate;
+                            }
+                        }
+
+                        if (!groups[subcatName]) {
+                            groups[subcatName] = {
+                                name: subcatName,
+                                transactions: []
+                            };
+                        }
+                        groups[subcatName].transactions.push({ amount, type, note: noteText, date: transactionDate });
+                    }
+
+                    // 1. Limpiar todos los importes reales para la semana indicada
+                    appState.categories.forEach(cat => {
+                        cat.subcategories.forEach(sub => {
+                            if (sub.weeks[weekNum]) {
+                                sub.weeks[weekNum].real = 0;
+                            }
+                        });
+                    });
+
+                    let updatedCount = 0;
+                    let createdCount = 0;
+
+                    // 2. Procesar cada grupo e inyectar en appState
+                    for (const key in groups) {
+                        const group = groups[key];
+                        const subcatName = group.name;
+                        
+                        // Buscar subcategoría existente
+                        let match = findSubcategoryByName(subcatName);
+                        
+                        let isIncome = false;
+                        if (match) {
+                            isIncome = match.category.type === 'income';
+                        } else {
+                            // Si no existe, decidir su tipo según el tipo predominante en sus transacciones
+                            let incomeSum = 0;
+                            let expenseSum = 0;
+                            group.transactions.forEach(t => {
+                                if (t.type === 'Ingreso') {
+                                    incomeSum += t.amount;
+                                } else {
+                                    expenseSum += t.amount;
+                                }
+                            });
+                            isIncome = incomeSum >= expenseSum;
+                        }
+
+                        // Calcular importe neto agrupado y recopilar notas
+                        let netAmount = 0;
+                        const notesByDay = {};
+
+                        group.transactions.forEach(t => {
+                            // Suma o resta según corresponda
+                            if (isIncome) {
+                                if (t.type === 'Ingreso') {
+                                    netAmount += t.amount;
+                                } else {
+                                    netAmount -= t.amount;
+                                }
+                            } else {
+                                if (t.type === 'Ingreso') {
+                                    netAmount -= t.amount;
+                                } else {
+                                    netAmount += t.amount;
+                                }
+                            }
+
+                            // Extraer día de la transacción o por defecto
+                            let dayVal = 1;
+                            if (t.date) {
+                                dayVal = t.date.getDate();
+                            } else {
+                                let start = getMondayOfWeek(weekNum, appState.metadata.year || 2026);
+                                dayVal = start.getDate();
+                            }
+
+                            if (t.note) {
+                                if (!notesByDay[dayVal]) {
+                                    notesByDay[dayVal] = [];
+                                }
+                                notesByDay[dayVal].push(t.note);
+                            }
+                        });
+
+                        netAmount = Math.round(netAmount * 100) / 100;
+
+                        let category, subcategory;
+
+                        if (match) {
+                            category = match.category;
+                            subcategory = match.subcategory;
+                            updatedCount++;
+                        } else {
+                            // Crear nueva categoría si no existe y añadir subcategoría
+                            const catName = isIncome ? "Otros Ingresos (Importado)" : "Otros Gastos (Importado)";
+                            const catType = isIncome ? "income" : "expense";
+                            
+                            category = appState.categories.find(c => c.name === catName && c.type === catType);
+                            if (!category) {
+                                category = {
+                                    id: 'cat_imp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                                    name: catName,
+                                    type: catType,
+                                    subcategories: []
+                                };
+                                appState.categories.push(category);
+                            }
+
+                            subcategory = {
+                                id: 'sub_imp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                                name: subcatName,
+                                weeks: {}
+                            };
+                            category.subcategories.push(subcategory);
+                            createdCount++;
+                        }
+
+                        // Formatear notas agrupadas por día
+                        const notesList = [];
+                        for (const day in notesByDay) {
+                            notesList.push(`Día ${day}: ${notesByDay[day].join(', ')}`);
+                        }
+                        const notesStr = notesList.join(' | ');
+
+                        // Rellenar o inicializar semana
+                        if (!subcategory.weeks[weekNum]) {
+                            subcategory.weeks[weekNum] = {
+                                planned: 0,
+                                real: 0,
+                                notes: "",
+                                nature: "green"
+                            };
+                        }
+                        
+                        subcategory.weeks[weekNum].real = netAmount;
+                        if (notesStr) {
+                            subcategory.weeks[weekNum].notes = notesStr;
+                        }
+                    }
+
+                    // Guardar y redibujar
+                    saveToLocalStorage();
+                    recalculateAll();
+
+                    let message = `CSV importado correctamente en S${weekNum}. `;
+                    if (updatedCount > 0) message += `Actualizadas ${updatedCount} subcategorías. `;
+                    if (createdCount > 0) message += `Creadas ${createdCount} nuevas.`;
+                    showToast(message, "success");
+
+                } catch (err) {
+                    console.error(err);
+                    showToast("Error al importar el archivo CSV: " + err.message, "danger");
+                } finally {
+                    event.target.value = '';
                 }
             };
             reader.readAsText(file);
