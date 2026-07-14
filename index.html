@@ -126,6 +126,11 @@
                     </button>
                 </div>
 
+                <!-- Botón de Próximos Gastos -->
+                <button onclick="openUpcomingExpensesModal()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-md">
+                    <i data-lucide="calendar-clock" class="w-3.5 h-3.5"></i> Próximos Gastos
+                </button>
+
                 <!-- Botón de compartir WhatsApp -->
                 <button onclick="openWhatsAppModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-md">
                     <i data-lucide="share-2" class="w-3.5 h-3.5"></i> Compartir Reporte
@@ -323,6 +328,43 @@
                     <div class="flex justify-between"><span class="text-slate-500 font-medium">Intervalo Temporal:</span> <span class="font-bold text-slate-800" id="modal-info-week">-</span></div>
                 </div>
 
+                <!-- Configuración de Fecha y Día del Mes -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-slate-500 font-bold mb-1 uppercase tracking-wide">Día del Mes</label>
+                        <input type="number" id="input-day-of-month" min="1" max="31" value="1" oninput="onDayOfMonthInput()"
+                               class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-right font-bold focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-500 font-bold mb-1 uppercase tracking-wide">Semana de Destino</label>
+                        <div id="badge-target-week" class="w-full bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-lg px-3 py-2 text-center font-bold text-xs flex items-center justify-center h-[38px]">
+                            -
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Clasificación del Gasto (Semáforo) -->
+                <div id="expense-nature-container" class="mt-1">
+                    <label class="block text-[11px] text-slate-500 font-bold mb-1.5 uppercase tracking-wide">Naturaleza del Gasto</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="border border-slate-200 hover:border-emerald-500 rounded-xl p-2 flex flex-col items-center gap-1 cursor-pointer select-none text-center transition-all bg-emerald-50/20 text-emerald-800" id="label-nature-green">
+                            <input type="radio" name="expense-nature" value="green" checked class="w-3.5 h-3.5 text-emerald-600 focus:ring-emerald-500">
+                            <span class="text-[10px] font-bold">🟢 Necesidades</span>
+                            <span class="text-[7.5px] text-slate-500 leading-tight">Priorizar siempre</span>
+                        </label>
+                        <label class="border border-slate-200 hover:border-amber-500 rounded-xl p-2 flex flex-col items-center gap-1 cursor-pointer select-none text-center transition-all bg-amber-50/20 text-amber-800" id="label-nature-yellow">
+                            <input type="radio" name="expense-nature" value="yellow" class="w-3.5 h-3.5 text-amber-600 focus:ring-amber-500">
+                            <span class="text-[10px] font-bold">🟡 Deseos</span>
+                            <span class="text-[7.5px] text-slate-500 leading-tight">Límite mensual</span>
+                        </label>
+                        <label class="border border-slate-200 hover:border-rose-500 rounded-xl p-2 flex flex-col items-center gap-1 cursor-pointer select-none text-center transition-all bg-rose-50/20 text-rose-800" id="label-nature-red">
+                            <input type="radio" name="expense-nature" value="red" class="w-3.5 h-3.5 text-rose-600 focus:ring-rose-500">
+                            <span class="text-[10px] font-bold">🔴 Caprichos</span>
+                            <span class="text-[7.5px] text-slate-500 leading-tight">Mínimo posible</span>
+                        </label>
+                    </div>
+                </div>
+
                 <!-- Formularios Numéricos -->
                 <div class="grid grid-cols-2 gap-4">
                     <div>
@@ -355,14 +397,31 @@
                 </div>
 
                 <!-- Opciones de Recurrencia Automática -->
-                <div class="border-t border-slate-100 pt-3 flex flex-col gap-2">
+                <div class="border-t border-slate-200 pt-3 flex flex-col gap-3">
                     <label class="flex items-center gap-2 cursor-pointer select-none">
-                        <input type="checkbox" id="checkbox-recurrence" class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500 focus:ring-2">
-                        <span class="text-xs text-slate-700 font-semibold">Replicar en todas las semanas futuras del año</span>
+                        <input type="checkbox" id="checkbox-recurrence" onchange="toggleRecurrenceFields()" class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500 focus:ring-2">
+                        <span class="text-xs text-slate-700 font-bold uppercase tracking-wide">Programar Recurrencia</span>
                     </label>
-                    <p class="text-[10px] text-slate-400 leading-normal pl-6">
-                        Si se activa, el valor "Previsto" indicado se duplicará automáticamente en todas las semanas restantes (desde el índice actual hasta la semana 52).
-                    </p>
+                    
+                    <div id="recurrence-options" class="hidden pl-6 flex flex-col gap-3 transition-all duration-300">
+                        <div>
+                            <label class="block text-[11px] text-slate-500 font-bold mb-1 uppercase tracking-wide">Periodicidad</label>
+                            <select id="select-periodicity" onchange="updateRecurrencePreview()"
+                                    class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500 font-medium font-sans">
+                                <option value="weekly">Semanal</option>
+                                <option value="monthly" selected>Mensual</option>
+                                <option value="yearly">Anual</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Preview of scheduled weeks -->
+                        <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-[10px] text-slate-500">
+                            <span class="font-bold text-slate-700 block mb-1">Semanas afectadas por recurrencia:</span>
+                            <div id="recurrence-preview-list" class="font-bold text-emerald-700 break-words leading-relaxed">
+                                -
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -470,6 +529,40 @@
         </div>
     </div>
 
+    <!-- MODAL DE GASTOS PREVISTOS (PRÓXIMAS 4 SEMANAS) -->
+    <div id="upcoming-expenses-modal" class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center hidden" role="dialog" aria-modal="true">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full mx-4 overflow-hidden transform scale-95 transition-all flex flex-col max-h-[85vh]">
+            <!-- Encabezado -->
+            <div class="bg-slate-900 text-white p-4 flex justify-between items-center flex-shrink-0">
+                <div>
+                    <h3 class="font-bold text-sm tracking-wide uppercase flex items-center gap-1.5">
+                        <i data-lucide="calendar-clock" class="text-blue-400 w-4 h-4"></i> Gastos Previstos
+                    </h3>
+                    <p class="text-xs text-slate-400">Pagos planificados para las próximas 4 semanas</p>
+                </div>
+                <button onclick="closeUpcomingExpensesModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-all">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Contenido (Scrollable) -->
+            <div class="p-6 overflow-y-auto flex-1 flex flex-col gap-4 custom-scrollbar" id="upcoming-expenses-content">
+                <!-- Se inyecta dinámicamente -->
+            </div>
+
+            <!-- Acciones y Gran Total -->
+            <div class="bg-slate-50 border-t border-slate-200 px-6 py-4 flex justify-between items-center flex-shrink-0">
+                <div>
+                    <span class="text-[10px] text-slate-400 uppercase font-bold block">Total 4 Semanas</span>
+                    <span class="text-lg font-black text-rose-600" id="upcoming-expenses-grand-total">0,00 €</span>
+                </div>
+                <button onclick="closeUpcomingExpensesModal()" class="bg-slate-900 hover:bg-slate-800 text-white px-5 py-2 rounded-lg text-xs font-bold transition-all">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- TOAST NOTIFICATION CONTAINER -->
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
@@ -562,6 +655,36 @@
         // Inicialización General
         window.addEventListener('DOMContentLoaded', () => {
             initApp();
+
+            // Auto-borrar cero al hacer clic en inputs de cantidad
+            const inputPlanned = document.getElementById('input-planned');
+            const inputReal = document.getElementById('input-real');
+            
+            if (inputPlanned) {
+                inputPlanned.addEventListener('focus', function() {
+                    if (this.value === '0') {
+                        this.value = '';
+                    }
+                });
+                inputPlanned.addEventListener('blur', function() {
+                    if (this.value.trim() === '') {
+                        this.value = '0';
+                    }
+                });
+            }
+            
+            if (inputReal) {
+                inputReal.addEventListener('focus', function() {
+                    if (this.value === '0') {
+                        this.value = '';
+                    }
+                });
+                inputReal.addEventListener('blur', function() {
+                    if (this.value.trim() === '') {
+                        this.value = '0';
+                    }
+                });
+            }
         });
 
         function initApp() {
@@ -609,6 +732,14 @@
 
             // Ejecuta el flujo de cálculo inicial y renderizado matricial
             recalculateAll();
+
+            // Desplazar automáticamente a la semana actual al cargar
+            const today = new Date();
+            if (parseInt(yearSelector.value) === today.getFullYear()) {
+                setTimeout(() => {
+                    scrollToWeek(CURRENT_WEEK_INDEX, false);
+                }, 300);
+            }
         }
 
         // Calcula dinámicamente la semana del año actual basándose en la fecha real del sistema
@@ -1049,21 +1180,39 @@
                         if (weekData) {
                             const planned = weekData.planned || 0;
                             const real = weekData.real || 0;
+                            
+                            // 1. Obtener el día para mostrar en la celda
+                            const dayVal = getDayForCell(w, weekData, year);
+                            
+                            // 2. Determinar la clase de color según la naturaleza
+                            const nature = weekData.nature || 'green';
+                            let colorClass = '';
+                            if (category.type === 'expense') {
+                                if (nature === 'green') colorClass = 'text-emerald-600';
+                                else if (nature === 'yellow') colorClass = 'text-amber-600';
+                                else if (nature === 'red') colorClass = 'text-rose-600';
+                            } else {
+                                colorClass = 'text-slate-800';
+                            }
 
                             if (real !== 0) {
-                                cell.innerHTML = `<span class="font-bold text-slate-800">${real.toFixed(0)}</span> <span class="text-[9px] text-slate-400 font-sans font-normal block">R</span>`;
+                                cell.innerHTML = `<span class="font-bold ${colorClass}">${real.toFixed(0)}</span> <span class="text-[9px] text-slate-400 font-sans font-normal block">d. ${dayVal} • R</span>`;
                                 if (category.type === 'expense' && real > planned) {
-                                    cell.classList.add('text-rose-600', 'bg-rose-50/60');
+                                    cell.classList.add('bg-rose-50/60');
                                 }
                             } else if (planned !== 0) {
-                                cell.innerHTML = `<span class="text-slate-400 italic font-medium">${planned.toFixed(0)}</span> <span class="text-[8px] text-slate-400 font-sans font-normal block">P</span>`;
+                                cell.innerHTML = `<span class="italic font-semibold ${colorClass}">${planned.toFixed(0)}</span> <span class="text-[9px] text-slate-400 font-sans font-normal block">d. ${dayVal} • P</span>`;
                             } else {
                                 cell.textContent = '-';
                             }
 
                             if (weekData.notes && weekData.notes.trim() !== '') {
                                 const noteBadge = document.createElement('span');
-                                noteBadge.className = "absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-blue-500";
+                                // Determinar color del punto: rojo si real > previsto, azul si <= previsto
+                                const isOverBudget = (category.type === 'expense' && real > planned && planned > 0 && real > 0);
+                                const dotColor = isOverBudget ? 'bg-rose-500' : 'bg-blue-500';
+                                
+                                noteBadge.className = `absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${dotColor}`;
                                 noteBadge.title = weekData.notes;
                                 cell.appendChild(noteBadge);
                             }
@@ -1263,6 +1412,147 @@
             lucide.createIcons();
         }
 
+        // HELPERS PARA PROGRAMACIÓN Y RECURRENCIA
+        function getDayForCell(weekNum, weekData, year) {
+            if (weekData && weekData.notes) {
+                const match = weekData.notes.match(/^Día\s+(\d+):/i);
+                if (match) {
+                    return parseInt(match[1]);
+                }
+            }
+            let daysOffset = (weekNum - 1) * 7;
+            let start = new Date(year, 0, 1 + daysOffset);
+            return start.getDate();
+        }
+
+        function getWeekFromDay(clickedWeek, dayOfMonth, year) {
+            const month = getMonthFromWeek(clickedWeek);
+            const lastDay = new Date(year, month + 1, 0).getDate();
+            const clampedDay = Math.min(Math.max(dayOfMonth, 1), lastDay);
+            const targetDate = new Date(year, month, clampedDay);
+            
+            const startOfYear = new Date(year, 0, 1);
+            const diffDays = Math.round((targetDate - startOfYear) / 86400000);
+            return Math.min(Math.max(Math.floor(diffDays / 7) + 1, 1), 52);
+        }
+
+        function updateNotesPrefix(day) {
+            const notesInput = document.getElementById('input-notes');
+            let currentVal = notesInput.value;
+            
+            const regex = /^Día\s+\d+:\s*/i;
+            if (regex.test(currentVal)) {
+                currentVal = currentVal.replace(regex, `Día ${day}: `);
+            } else {
+                if (currentVal.trim() !== '') {
+                    currentVal = `Día ${day}: ${currentVal}`;
+                } else {
+                    currentVal = `Día ${day}: `;
+                }
+            }
+            notesInput.value = currentVal;
+        }
+
+        function getRecurrenceWeeks(startWeek, dayOfMonth, periodicity, year) {
+            const weeks = [];
+            const currentMonth = getMonthFromWeek(startWeek);
+            
+            if (periodicity === 'weekly') {
+                for (let w = startWeek; w <= 52; w++) {
+                    weeks.push(w);
+                }
+            } else if (periodicity === 'monthly') {
+                for (let m = currentMonth; m < 12; m++) {
+                    let lastDay = new Date(year, m + 1, 0).getDate();
+                    let targetDay = Math.min(dayOfMonth, lastDay);
+                    let targetDate = new Date(year, m, targetDay);
+                    
+                    let startOfYear = new Date(year, 0, 1);
+                    let diffDays = Math.round((targetDate - startOfYear) / 86400000);
+                    let w = Math.min(Math.floor(diffDays / 7) + 1, 52);
+                    if (w >= startWeek && !weeks.includes(w)) {
+                        weeks.push(w);
+                    }
+                }
+            } else if (periodicity === 'yearly') {
+                let lastDay = new Date(year, currentMonth + 1, 0).getDate();
+                let targetDay = Math.min(dayOfMonth, lastDay);
+                let targetDate = new Date(year, currentMonth, targetDay);
+                
+                let startOfYear = new Date(year, 0, 1);
+                let diffDays = Math.round((targetDate - startOfYear) / 86400000);
+                let w = Math.min(Math.floor(diffDays / 7) + 1, 52);
+                if (w >= startWeek) {
+                    weeks.push(w);
+                }
+            }
+            return weeks;
+        }
+
+        function toggleRecurrenceFields() {
+            const isChecked = document.getElementById('checkbox-recurrence').checked;
+            const optionsDiv = document.getElementById('recurrence-options');
+            if (isChecked) {
+                optionsDiv.classList.remove('hidden');
+                updateRecurrencePreview();
+            } else {
+                optionsDiv.classList.add('hidden');
+            }
+        }
+
+        function updateRecurrencePreview() {
+            if (!activeEditContext) return;
+            
+            const periodicity = document.getElementById('select-periodicity').value;
+            const dayInput = document.getElementById('input-day-of-month');
+            let dayVal = parseInt(dayInput.value) || 1;
+            if (dayVal < 1) dayVal = 1;
+            if (dayVal > 31) dayVal = 31;
+            
+            const year = appState.metadata.year || 2026;
+            const { weekNumber } = activeEditContext;
+            const w_target = getWeekFromDay(weekNumber, dayVal, year);
+            
+            const weeks = getRecurrenceWeeks(w_target, dayVal, periodicity, year);
+            const otherWeeks = weeks.filter(w => w !== w_target);
+            
+            const previewList = document.getElementById('recurrence-preview-list');
+            if (otherWeeks.length === 0) {
+                previewList.textContent = "Ninguna semana futura afectada.";
+                previewList.className = "font-medium text-slate-400 break-words leading-relaxed";
+            } else {
+                const formattedWeeks = otherWeeks.map(w => {
+                    const range = getWeekDateRange(w, year);
+                    const dateStr = range.substring(range.indexOf('(') + 1, range.indexOf(')'));
+                    return `S${w} (${dateStr})`;
+                });
+                previewList.textContent = formattedWeeks.join(', ');
+                previewList.className = "font-bold text-emerald-700 break-words leading-relaxed";
+            }
+        }
+
+        function onDayOfMonthInput() {
+            if (!activeEditContext) return;
+            
+            let dayInput = document.getElementById('input-day-of-month');
+            let dayVal = parseInt(dayInput.value) || 1;
+            if (dayVal < 1) dayVal = 1;
+            if (dayVal > 31) dayVal = 31;
+            
+            updateNotesPrefix(dayVal);
+            
+            const year = appState.metadata.year || 2026;
+            const { weekNumber } = activeEditContext;
+            const w_target = getWeekFromDay(weekNumber, dayVal, year);
+            
+            const badge = document.getElementById('badge-target-week');
+            const range = getWeekDateRange(w_target, year);
+            const dateStr = range.substring(range.indexOf('(') + 1, range.indexOf(')'));
+            badge.textContent = `S${w_target} (${dateStr})`;
+            
+            updateRecurrencePreview();
+        }
+
         // Apertura de Modal e inyección de datos para edición de celdas
         function openCellModal(categoryId, subcategoryId, weekNumber) {
             const category = appState.categories.find(c => c.id === categoryId);
@@ -1279,10 +1569,45 @@
 
             document.getElementById('input-planned').value = weekData.planned || 0;
             document.getElementById('input-real').value = weekData.real || 0;
-            document.getElementById('input-notes').value = weekData.notes || "";
+            
+            // Determinar día del mes a partir de las notas o calcularlo por defecto
+            const year = appState.metadata.year || 2026;
+            const notesVal = weekData.notes || "";
+            let dayVal;
+            const noteMatch = notesVal.match(/^Día\s+(\d+):/i);
+            if (noteMatch) {
+                dayVal = parseInt(noteMatch[1]);
+            } else {
+                let daysOffset = (weekNumber - 1) * 7;
+                let start = new Date(year, 0, 1 + daysOffset);
+                dayVal = start.getDate();
+            }
+
+            document.getElementById('input-day-of-month').value = dayVal;
+            document.getElementById('input-notes').value = notesVal;
+            
+            // Forzar prefijo y recalculado al abrir
+            updateNotesPrefix(dayVal);
+            
+            // Mostrar u ocultar el semáforo de naturaleza de gasto
+            const natureContainer = document.getElementById('expense-nature-container');
+            if (category.type === 'expense') {
+                natureContainer.classList.remove('hidden');
+                const natureVal = weekData.nature || 'green';
+                const radio = document.querySelector(`input[name="expense-nature"][value="${natureVal}"]`);
+                if (radio) radio.checked = true;
+            } else {
+                natureContainer.classList.add('hidden');
+            }
+
             document.getElementById('checkbox-recurrence').checked = false;
+            document.getElementById('recurrence-options').classList.add('hidden');
+            document.getElementById('select-periodicity').value = "monthly";
 
             calculateModalDiff();
+            
+            // Disparar lógica de renderizado del destino
+            onDayOfMonthInput();
 
             const modal = document.getElementById('cell-modal');
             modal.classList.remove('hidden');
@@ -1337,20 +1662,40 @@
             const real = parseFloat(document.getElementById('input-real').value) || 0;
             const notes = document.getElementById('input-notes').value.trim();
             const doReplicate = document.getElementById('checkbox-recurrence').checked;
+            const periodicity = document.getElementById('select-periodicity').value;
+            const dayOfMonth = parseInt(document.getElementById('input-day-of-month').value) || 1;
 
             const category = appState.categories.find(c => c.id === categoryId);
             const subcat = category.subcategories.find(s => s.id === subcategoryId);
 
-            subcat.weeks[weekNumber] = { planned, real, notes };
+            const year = appState.metadata.year || 2026;
+            const w_target = getWeekFromDay(weekNumber, dayOfMonth, year);
+
+            // Si cambió de semana, limpiar la celda origen anterior
+            if (w_target !== weekNumber) {
+                delete subcat.weeks[weekNumber];
+            }
+
+            // Obtener naturaleza seleccionada
+            const natureEl = document.querySelector('input[name="expense-nature"]:checked');
+            const nature = (category.type === 'expense' && natureEl) ? natureEl.value : 'green';
+
+            // Guardar en la semana destino recalculada
+            subcat.weeks[w_target] = { planned, real, notes, nature };
 
             if (doReplicate) {
-                for (let w = weekNumber + 1; w <= 52; w++) {
-                    if (!subcat.weeks[w]) {
-                        subcat.weeks[w] = { planned: 0, real: 0, notes: "" };
+                const recurrenceWeeks = getRecurrenceWeeks(w_target, dayOfMonth, periodicity, year);
+                recurrenceWeeks.forEach(w => {
+                    if (w !== w_target) {
+                        if (!subcat.weeks[w]) {
+                            subcat.weeks[w] = { planned: 0, real: 0, notes: "", nature: "green" };
+                        }
+                        subcat.weeks[w].planned = planned;
+                        subcat.weeks[w].notes = `Día ${dayOfMonth}: `;
+                        subcat.weeks[w].nature = nature;
                     }
-                    subcat.weeks[w].planned = planned;
-                }
-                showToast("Cambios replicados en el horizonte temporal futuro", "success");
+                });
+                showToast("Cambios y recurrencias guardados con éxito", "success");
             } else {
                 showToast("Registro guardado con éxito", "success");
             }
@@ -1373,6 +1718,117 @@
                 showToast("Celda restablecida", "info");
             }
             closeModal();
+        }
+
+        // CONTROLADOR DEL MODAL DE GASTOS PREVISTOS (PRÓXIMAS 4 SEMANAS)
+        function openUpcomingExpensesModal() {
+            const year = appState.metadata.year || 2026;
+            const startW = CURRENT_WEEK_INDEX;
+            const endW = Math.min(startW + 3, 52);
+            
+            const modalContent = document.getElementById('upcoming-expenses-content');
+            modalContent.innerHTML = '';
+            
+            let grandTotal = 0;
+            let hasAnyExpenses = false;
+            
+            for (let w = startW; w <= endW; w++) {
+                const weekExpenses = [];
+                let weeklyTotal = 0;
+                
+                appState.categories.forEach(category => {
+                    if (category.type === 'expense') {
+                        category.subcategories.forEach(subcat => {
+                            const weekData = subcat.weeks[w];
+                            if (weekData && weekData.planned > 0 && (!weekData.real || weekData.real === 0)) {
+                                weekExpenses.push({
+                                    catName: category.name,
+                                    subcatName: subcat.name,
+                                    planned: weekData.planned,
+                                    notes: weekData.notes || "",
+                                    weekNum: w,
+                                    nature: weekData.nature || "green"
+                                });
+                                weeklyTotal += weekData.planned;
+                            }
+                        });
+                    }
+                });
+                
+                if (weekExpenses.length > 0) {
+                    hasAnyExpenses = true;
+                    grandTotal += weeklyTotal;
+                    
+                    const dateRange = getWeekDateRange(w, year);
+                    const dateStr = dateRange.substring(dateRange.indexOf('(') + 1, dateRange.indexOf(')'));
+                    
+                    const weekSection = document.createElement('div');
+                    weekSection.className = "bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col gap-2.5 shadow-sm";
+                    
+                    const weekHeader = document.createElement('div');
+                    weekHeader.className = "flex justify-between items-center border-b border-slate-200 pb-1.5";
+                    weekHeader.innerHTML = `
+                        <span class="font-bold text-slate-800 text-xs uppercase tracking-wide">Semana ${w} <span class="text-slate-400 font-normal normal-case">(${dateStr})</span></span>
+                        <span class="font-extrabold text-xs text-rose-700">${weeklyTotal.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €</span>
+                    `;
+                    weekSection.appendChild(weekHeader);
+                    
+                    const itemsList = document.createElement('div');
+                    itemsList.className = "flex flex-col gap-2";
+                    
+                    weekExpenses.forEach(item => {
+                        const itemEl = document.createElement('div');
+                        itemEl.className = "flex justify-between items-start gap-4 text-[11px] py-1 border-b border-dashed border-slate-100 last:border-0";
+                        
+                        let natureBadgeHtml = '';
+                        const nature = item.nature || 'green';
+                        if (nature === 'green') {
+                            natureBadgeHtml = `<span class="text-[8px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-full whitespace-nowrap">🟢 Necesidades</span>`;
+                        } else if (nature === 'yellow') {
+                            natureBadgeHtml = `<span class="text-[8px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full whitespace-nowrap">🟡 Deseos</span>`;
+                        } else if (nature === 'red') {
+                            natureBadgeHtml = `<span class="text-[8px] font-bold bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded-full whitespace-nowrap">🔴 Caprichos</span>`;
+                        }
+
+                        itemEl.innerHTML = `
+                            <div class="min-w-0">
+                                <div class="font-bold text-slate-800 flex flex-wrap items-center gap-1.5">
+                                    <span class="text-slate-400 font-medium text-[9px] uppercase border border-slate-200 rounded px-1">${item.catName}</span>
+                                    <span class="truncate">${item.subcatName}</span>
+                                    ${natureBadgeHtml}
+                                </div>
+                                ${item.notes ? `<p class="text-slate-500 italic mt-0.5">${item.notes}</p>` : ''}
+                            </div>
+                            <span class="font-bold text-slate-900 flex-shrink-0">${item.planned.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €</span>
+                        `;
+                        itemsList.appendChild(itemEl);
+                    });
+                    
+                    weekSection.appendChild(itemsList);
+                    modalContent.appendChild(weekSection);
+                }
+            }
+            
+            document.getElementById('upcoming-expenses-grand-total').textContent = grandTotal.toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' €';
+            
+            if (!hasAnyExpenses) {
+                modalContent.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-8 text-center gap-2.5 text-slate-400">
+                        <i data-lucide="check-circle" class="w-10 h-10 text-emerald-500"></i>
+                        <p class="font-bold text-sm text-slate-700">¡Todo despejado!</p>
+                        <p class="text-xs">No hay gastos previstos planificados para las próximas 4 semanas.</p>
+                    </div>
+                `;
+            }
+            
+            const modal = document.getElementById('upcoming-expenses-modal');
+            modal.classList.remove('hidden');
+            
+            lucide.createIcons();
+        }
+
+        function closeUpcomingExpensesModal() {
+            document.getElementById('upcoming-expenses-modal').classList.add('hidden');
         }
 
         function deleteSubcategory(catId, subcatId) {
@@ -1442,7 +1898,7 @@
             }
         }
 
-        function scrollToWeek(weekNum) {
+        function scrollToWeek(weekNum, showNotification = true) {
             const tableContainer = document.querySelector('.table-container');
             const headers = document.querySelectorAll('#table-head-weeks th');
             
@@ -1456,7 +1912,9 @@
                     left: tableContainer.scrollLeft + scrollLeftOffset,
                     behavior: 'smooth'
                 });
-                showToast(`Desplazado a Semana ${weekNum}`, "info");
+                if (showNotification) {
+                    showToast(`Desplazado a Semana ${weekNum}`, "info");
+                }
             }
         }
 
@@ -1658,8 +2116,30 @@
                 });
                 const monthlyNetFlow = monthlyIncome - monthlyExpensesUpToW;
 
+                // Calcular desglose semanal por semáforo
+                let greenTotal = 0;
+                let yellowTotal = 0;
+                let redTotal = 0;
+                
+                appState.categories.forEach(category => {
+                    if (category.type === 'expense') {
+                        category.subcategories.forEach(subcat => {
+                            const weekData = subcat.weeks[w];
+                            if (weekData) {
+                                const val = (weekData.real !== undefined && weekData.real !== null && weekData.real !== 0)
+                                    ? weekData.real
+                                    : (weekData.planned || 0);
+                                const nature = weekData.nature || 'green';
+                                if (nature === 'green') greenTotal += val;
+                                else if (nature === 'yellow') yellowTotal += val;
+                                else if (nature === 'red') redTotal += val;
+                            }
+                        });
+                    }
+                });
+
                 text += `🟢 *Ingresos Mensuales:* ${monthlyIncome.toFixed(0)} €\n`;
-                text += `🔴 *Gastos Semanales:* ${weeklyExpense.toFixed(0)} €\n`;
+                text += `⚪ *Gastos Semanales:* ${weeklyExpense.toFixed(0)} €\n`;
                 text += `⚖️ *Flujo Neto del Mes:* ${monthlyNetFlow.toFixed(0)} €\n\n`;
 
                 text += `📝 *Detalle de Movimientos en S${w}:*\n`;
@@ -1670,18 +2150,20 @@
                             const val = weekData.real !== 0 ? weekData.real : weekData.planned;
                             const status = weekData.real !== 0 ? "Real" : "Previsto";
                             
-                            let emoji = "⚪";
+                            let emoji = "🟢"; // default for income
                             let excessAlert = "";
                             if (category.type === 'expense') {
+                                const nature = weekData.nature || 'green';
+                                if (nature === 'green') emoji = "🟢";
+                                else if (nature === 'yellow') emoji = "🟡";
+                                else if (nature === 'red') emoji = "🔴";
+
                                 if (weekData.real > weekData.planned && weekData.real !== 0) {
-                                    emoji = "🔴";
                                     excessAlert = " ⚠️ *¡Exceso!*";
                                 }
-                            } else {
-                                emoji = "🟢";
                             }
 
-                            text += `${emoji} *${subcat.name}:* ${val.toFixed(0)}€ (${status})${excessAlert}\n`;
+                            text += `${emoji} *[${category.name.toUpperCase()}] ${subcat.name}:* ${val.toFixed(0)}€ (${status})${excessAlert}\n`;
                             if (weekData.notes) {
                                 text += `   _${weekData.notes}_\n`;
                             }
@@ -1703,8 +2185,32 @@
                 });
                 netFlow = income - expense;
 
+                // Calcular desglose mensual por semáforo
+                let greenTotal = 0;
+                let yellowTotal = 0;
+                let redTotal = 0;
+                
+                monthWeeks.forEach(w => {
+                    appState.categories.forEach(category => {
+                        if (category.type === 'expense') {
+                            category.subcategories.forEach(subcat => {
+                                const weekData = subcat.weeks[w];
+                                if (weekData) {
+                                    const val = (weekData.real !== undefined && weekData.real !== null && weekData.real !== 0)
+                                        ? weekData.real
+                                        : (weekData.planned || 0);
+                                    const nature = weekData.nature || 'green';
+                                    if (nature === 'green') greenTotal += val;
+                                    else if (nature === 'yellow') yellowTotal += val;
+                                    else if (nature === 'red') redTotal += val;
+                                }
+                            });
+                        }
+                    });
+                });
+
                 text += `🟢 *Ingresos Mensuales:* ${income.toFixed(0)} €\n`;
-                text += `🔴 *Gastos Mensuales:* ${expense.toFixed(0)} €\n`;
+                text += `⚪ *Gastos Mensuales:* ${expense.toFixed(0)} €\n`;
                 text += `⚖️ *Flujo Neto del Mes:* ${netFlow.toFixed(0)} €\n\n`;
 
                 text += `📝 *Detalle de Movimientos en ${currentMonthName}:*\n`;
@@ -1714,6 +2220,7 @@
                         let subRealTotal = 0;
                         let subHasData = false;
                         let subNotes = [];
+                        let lastNature = 'green';
 
                         monthWeeks.forEach(w => {
                             const weekData = subcat.weeks[w];
@@ -1721,6 +2228,7 @@
                                 subPlannedTotal += weekData.planned || 0;
                                 subRealTotal += weekData.real || 0;
                                 subHasData = true;
+                                if (weekData.nature) lastNature = weekData.nature;
                                 if (weekData.notes) subNotes.push(`S${w}: ${weekData.notes}`);
                             }
                         });
@@ -1730,18 +2238,19 @@
                             const val = subRealTotal !== 0 ? subRealTotal : subPlannedTotal;
                             const status = subRealTotal !== 0 ? "Real" : "Previsto";
                             
-                            let emoji = "⚪";
+                            let emoji = "🟢"; // default for income
                             let excessAlert = "";
                             if (isExpense) {
+                                if (lastNature === 'green') emoji = "🟢";
+                                else if (lastNature === 'yellow') emoji = "🟡";
+                                else if (lastNature === 'red') emoji = "🔴";
+                                
                                 if (subRealTotal > subPlannedTotal && subRealTotal !== 0) {
-                                    emoji = "🔴";
                                     excessAlert = " ⚠️ *¡Exceso!*";
                                 }
-                            } else {
-                                emoji = "🟢";
                             }
 
-                            text += `${emoji} *${subcat.name}:* ${val.toFixed(0)}€ (${status})${excessAlert}\n`;
+                            text += `${emoji} *[${category.name.toUpperCase()}] ${subcat.name}:* ${val.toFixed(0)}€ (${status})${excessAlert}\n`;
                             if (subNotes.length > 0) {
                                 text += `   _${subNotes.join(', ')}_\n`;
                             }
